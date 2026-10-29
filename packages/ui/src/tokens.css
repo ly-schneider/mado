@@ -1,0 +1,177 @@
+/*
+ * Mado tokens. Values come from the Figma "Foundations" page (file Q0njSllqKRnt7nnpPvMO0X).
+ * Semantic names only: components never use raw colours.
+ * Themes are pure token swaps on [data-theme]; accents swap on [data-accent].
+ */
+@theme {
+  --color-page: oklch(0.17 0.004 75);
+  --color-panel: oklch(0.19 0.004 75);
+  --color-raised: oklch(0.22 0.004 75);
+  --color-overlay: oklch(0.25 0.004 75);
+  --color-edge: oklch(0.28 0.004 75);
+  --color-ink: oklch(0.97 0.004 75);
+  --color-ink-muted: oklch(0.82 0.004 75);
+  --color-ink-subtle: oklch(0.7 0.004 75);
+  --color-ink-faint: oklch(0.58 0.004 75);
+  --color-on-ink: oklch(0.17 0.004 75);
+  --color-accent: oklch(0.8 0.135 75);
+  --color-danger: oklch(0.7 0.16 25);
+  --color-success: oklch(0.74 0.13 150);
+  --color-state-hover: color-mix(in oklch, var(--color-ink) 3%, transparent);
+  --color-state-active: color-mix(in oklch, var(--color-ink) 6%, transparent);
+  --color-state-selected: color-mix(in oklch, var(--color-accent) 8%, transparent);
+  --color-accent-soft: color-mix(in oklch, var(--color-accent) 14%, transparent);
+
+  /* Label dots. Muted so they never compete with the accent. */
+  --color-label-grey: oklch(0.7 0.004 75);
+  --color-label-amber: oklch(0.78 0.12 75);
+  --color-label-red: oklch(0.7 0.14 25);
+  --color-label-green: oklch(0.74 0.11 150);
+  --color-label-blue: oklch(0.72 0.1 240);
+  --color-label-violet: oklch(0.7 0.12 295);
+  --color-label-pink: oklch(0.74 0.12 350);
+  --color-label-teal: oklch(0.74 0.09 195);
+
+  --font-sans: system-ui, -apple-system, "SF Pro Text", "Inter Variable", Inter, "Segoe UI", sans-serif;
+
+  /* Type scale: size / line-height / tracking from the Figma text styles (tracking is %). */
+  --text-display: 28px;
+  --text-display--line-height: 34px;
+  --text-display--letter-spacing: -0.021em;
+  --text-display--font-weight: 600;
+  --text-title: 20px;
+  --text-title--line-height: 28px;
+  --text-title--letter-spacing: -0.017em;
+  --text-title--font-weight: 600;
+  --text-base: 15px;
+  --text-base--line-height: 22px;
+  --text-base--letter-spacing: -0.009em;
+  --text-prose: 15px;
+  --text-prose--line-height: 24px;
+  --text-prose--letter-spacing: -0.009em;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-sm--letter-spacing: -0.006em;
+  --text-label: 13px;
+  --text-label--line-height: 18px;
+  --text-label--letter-spacing: -0.003em;
+  --text-kbd: 11px;
+  --text-kbd--line-height: 16px;
+  --text-touch: 17px;
+  --text-touch--line-height: 24px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --spacing: 4px;
+  --spacing-control: 32px;
+  --spacing-touch: 36px;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --animate-pop: pop 140ms var(--ease-out);
+  --animate-fade: fade 120ms var(--ease-out);
+  --animate-sheet: sheet 240ms var(--ease-out);
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.98) translateY(-4px);
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet {
+    from {
+      transform: translateY(100%);
+    }
+  }
+}
+
+[data-theme="light"] {
+  --color-page: oklch(0.99 0.003 75);
+  --color-panel: oklch(0.97 0.003 75);
+  --color-raised: oklch(0.95 0.003 75);
+  --color-overlay: oklch(1 0 0);
+  --color-edge: oklch(0.9 0.003 75);
+  --color-ink: oklch(0.2 0.003 75);
+  --color-ink-muted: oklch(0.38 0.003 75);
+  --color-ink-subtle: oklch(0.5 0.003 75);
+  --color-ink-faint: oklch(0.62 0.003 75);
+  --color-on-ink: oklch(0.99 0.003 75);
+  --color-accent: oklch(0.57 0.14 58);
+  --color-danger: oklch(0.55 0.18 25);
+  --color-success: oklch(0.55 0.13 150);
+  --color-label-grey: oklch(0.55 0.004 75);
+  --color-label-amber: oklch(0.62 0.13 70);
+  --color-label-red: oklch(0.56 0.17 25);
+  --color-label-green: oklch(0.56 0.12 150);
+  --color-label-blue: oklch(0.55 0.13 245);
+  --color-label-violet: oklch(0.52 0.15 295);
+  --color-label-pink: oklch(0.58 0.15 350);
+  --color-label-teal: oklch(0.56 0.09 195);
+}
+
+/* Accent alternates kept as modes of the Figma "Accent" collection. Lamp (amber) is the default. */
+[data-accent="sora"] {
+  --color-accent: oklch(0.76 0.11 235);
+}
+[data-accent="ai"] {
+  --color-accent: oklch(0.72 0.13 275);
+}
+[data-accent="shu"] {
+  --color-accent: oklch(0.72 0.16 35);
+}
+[data-theme="light"][data-accent="sora"] {
+  --color-accent: oklch(0.55 0.13 240);
+}
+[data-theme="light"][data-accent="ai"] {
+  --color-accent: oklch(0.5 0.16 275);
+}
+[data-theme="light"][data-accent="shu"] {
+  --color-accent: oklch(0.56 0.18 33);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  html[data-theme="light"] {
+    color-scheme: light;
+  }
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--text-base--line-height);
+    letter-spacing: var(--text-base--letter-spacing);
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--color-accent) 30%, transparent);
+  }
+  :focus-visible {
+    outline: 1.5px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-edge) transparent;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
