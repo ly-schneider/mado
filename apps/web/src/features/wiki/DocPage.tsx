@@ -38,6 +38,7 @@ import { LinkedFromCard, LinkedFromPills, Outline } from "./DocRail";
 import { HistoryPanel, RevisionContent } from "./HistoryPanel";
 import { EditedBy, TitleInput, useIsPhone } from "./parts";
 import { SharePanel } from "./ShareDialog";
+import { FolderView } from "./FolderView";
 
 export function DocPage() {
   const { docId } = useParams({ from: "/$ws/wiki/$docId" });
@@ -76,6 +77,7 @@ export function DocPage() {
       </div>
     );
   }
+  if (doc.kind === "folder") return <FolderView key={doc.id} doc={doc} ws={ws} />;
   return <DocScreen key={doc.id} doc={doc} ws={ws} />;
 }
 

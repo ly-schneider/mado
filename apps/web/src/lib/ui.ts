@@ -6,6 +6,8 @@ interface UiState {
   paletteQuery: string;
   capture: { open: boolean; kind: "task" | "note" | "lead"; projectId?: string; status?: string };
   sidebarOpen: boolean;
+  /** Sidebar row showing an inline title input (new folders start here). */
+  renamingDocId: string | null;
 }
 
 let state: UiState = {
@@ -13,6 +15,7 @@ let state: UiState = {
   paletteQuery: "",
   capture: { open: false, kind: "task" },
   sidebarOpen: true,
+  renamingDocId: null,
 };
 const listeners = new Set<() => void>();
 

@@ -1,4 +1,3 @@
-import type { DocNode, Workspace } from "@mado/contract";
 import { cn, IconButton, Menu } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
@@ -7,9 +6,6 @@ import {
   Briefcase,
   ChevronsUpDown,
   CircleCheck,
-  FileText,
-  Folder,
-  FolderOpen,
   Inbox,
   LogOut,
   Moon,
@@ -21,8 +17,9 @@ import {
   SquarePen,
   Sun,
 } from "@mado/ui/fluent";
-import { type ReactNode, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { client, orpc, queryClient } from "../../lib/orpc";
+import { NewDocMenu, SidebarDocTree } from "../wiki/DocTree";
 import { isTauri } from "../../lib/platform";
 import { toggleTheme, useTheme } from "../../lib/theme";
 import { openCapture, openPalette, setUi } from "../../lib/ui";
@@ -89,94 +86,6 @@ function usePath() {
   return useRouterState({ select: (s) => s.location.pathname });
 }
 
-function PageTree({ ws, onNavigate }: { ws: Workspace; onNavigate?: () => void }) {
-  const path = usePath();
-  const { data: tree = [] } = useQuery(orpc.doc.tree.queryOptions({ input: { workspaceId: ws.id } }));
-  const [open, setOpen] = useState<Record<string, boolean>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(`mado.tree.${ws.id}`) ?? "{}");
-    } catch {
-      return {};
-    }
-  });
-  const children = useMemo(() => {
-    const map = new Map<string | null, DocNode[]>();
-    for (const n of tree) {
-      const list = map.get(n.parentId) ?? [];
-      list.push(n);
-      map.set(n.parentId, list);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title));
-    return map;
-  }, [tree]);
-
-  const activeId = path.match(/\/wiki\/([0-9a-f-]{36})/)?.[1];
-  // Keep the ancestors of the open page expanded.
-  const ancestors = useMemo(() => {
-    const set = new Set<string>();
-    const byId = new Map(tree.map((n) => [n.id, n]));
-    let cur = activeId ? byId.get(activeId) : undefined;
-    while (cur?.parentId) {
-      set.add(cur.parentId);
-      cur = byId.get(cur.parentId);
-    }
-    return set;
-  }, [tree, activeId]);
-
-  const toggle = (id: string) => {
-    const next = { ...open, [id]: !(open[id] ?? false) };
-    setOpen(next);
-    try {
-      localStorage.setItem(`mado.tree.${ws.id}`, JSON.stringify(next));
-    } catch {}
-  };
-
-  const render = (parentId: string | null, depth: number): ReactNode =>
-    (children.get(parentId) ?? []).map((node) => {
-      const isOpen = open[node.id] ?? ancestors.has(node.id);
-      const icon = node.hasChildren ? isOpen ? <FolderOpen /> : <Folder /> : <FileText />;
-      return (
-        <div key={node.id}>
-          <div className="group/page relative">
-            <NavItem
-              to="/$ws/wiki/$docId"
-              params={{ ws: ws.slug, docId: node.id }}
-              icon={
-                node.hasChildren ? (
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    className="flex"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggle(node.id);
-                    }}
-                  >
-                    {icon}
-                  </span>
-                ) : (
-                  icon
-                )
-              }
-              indent={depth}
-              active={activeId === node.id}
-              onClick={() => {
-                if (node.hasChildren && !isOpen) toggle(node.id);
-                onNavigate?.();
-              }}
-            >
-              {node.title || "Untitled"}
-            </NavItem>
-          </div>
-          {node.hasChildren && isOpen && render(node.id, depth + 1)}
-        </div>
-      );
-    });
-
-  return <>{render(null, 0)}</>;
-}
-
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const ws = useWorkspace();
   const { data: workspaces = [] } = useWorkspaces();
@@ -186,12 +95,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { resolved } = useTheme();
   const { data: unread } = useQuery(orpc.inbox.unread.queryOptions({ refetchInterval: 30_000 }));
 
-  const createPage = async () => {
-    const node = await client.doc.create({ workspaceId: ws.id, projectId: ws.projects[0]?.id ?? null, title: "Untitled" });
-    await queryClient.invalidateQueries({ queryKey: orpc.doc.tree.key() });
-    navigate({ to: "/$ws/wiki/$docId", params: { ws: ws.slug, docId: node.id } });
-    onNavigate?.();
-  };
 
   return (
     <nav className="flex h-full w-full flex-col gap-px overflow-hidden px-2 pb-3 pt-2" aria-label="Sidebar">
@@ -321,14 +224,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         <SectionLabel
           action={
-            <IconButton label="New page" size="sm" className="-my-1 size-6" onClick={createPage}>
-              <Plus />
-            </IconButton>
+            <NewDocMenu ws={ws} className="-my-1" />
           }
         >
           <span className="text-ink-subtle">Pages</span>
         </SectionLabel>
-        <PageTree ws={ws} onNavigate={onNavigate} />
+        <SidebarDocTree ws={ws} onNavigate={onNavigate} />
         <div className="h-4 shrink-0" />
       </div>
 

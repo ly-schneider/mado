@@ -1,8 +1,9 @@
-import type { Doc, DocNode, Workspace } from "@mado/contract";
+import type { Doc, DocKind, DocNode, Workspace } from "@mado/contract";
 import { useNavigate } from "@tanstack/react-router";
 import { strToU8, zipSync } from "fflate";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { toast } from "../../lib/toast";
+import { setUi } from "../../lib/ui";
 
 export function childrenMap(tree: DocNode[]) {
   const map = new Map<string | null, DocNode[]>();
@@ -49,10 +50,15 @@ export function invalidateTree() {
   return queryClient.invalidateQueries({ queryKey: orpc.doc.tree.key() });
 }
 
-/** Create a page optimistically: the client picks the ID, so we can navigate before the server answers. */
+/**
+ * Create a page or folder optimistically: the client picks the ID, so we can navigate before the server
+ * answers. Pages open right away; folders stay in the sidebar in rename mode.
+ */
 export function useCreateDoc(ws: Workspace) {
   const navigate = useNavigate();
-  return async (opts: { projectId?: string | null; parentId?: string | null; title?: string } = {}) => {
+  return async (opts: { projectId?: string | null; parentId?: string | null; title?: string; kind?: DocKind; content?: string; open?: boolean } = {}) => {
+    const kind = opts.kind ?? "page";
+    const open = opts.open ?? kind === "page";
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const tree = queryClient.getQueryData<DocNode[]>(treeKey(ws.id)) ?? [];
@@ -61,7 +67,8 @@ export function useCreateDoc(ws: Workspace) {
     const siblings = tree.filter((n) => n.parentId === (opts.parentId ?? null));
     const node: DocNode = {
       id,
-      title: opts.title ?? "Untitled",
+      kind,
+      title: opts.title ?? (kind === "folder" ? "New folder" : "Untitled"),
       parentId: opts.parentId ?? null,
       projectId,
       sortOrder: Math.max(0, ...siblings.map((s) => s.sortOrder)) + 1,
@@ -72,11 +79,12 @@ export function useCreateDoc(ws: Workspace) {
     const project = ws.projects.find((p) => p.id === projectId);
     queryClient.setQueryData<Doc>(docKey(id), {
       id,
+      kind,
       workspaceId: ws.id,
       projectId,
       parentId: node.parentId,
       title: node.title,
-      content: "",
+      content: opts.content ?? "",
       path: parent ? [{ id: parent.id, title: parent.title }] : [],
       revisionNumber: 0,
       revisionCount: 0,
@@ -87,15 +95,16 @@ export function useCreateDoc(ws: Workspace) {
       shareLinks: 0,
       canEdit: true,
     });
-    navigate({ to: "/$ws/wiki/$docId", params: { ws: ws.slug, docId: id } });
+    if (open) navigate({ to: "/$ws/wiki/$docId", params: { ws: ws.slug, docId: id } });
+    else setUi({ renamingDocId: id });
     try {
-      await client.doc.create({ workspaceId: ws.id, projectId, parentId: node.parentId, title: node.title, clientId: id });
+      await client.doc.create({ workspaceId: ws.id, projectId, parentId: node.parentId, kind, title: node.title, content: opts.content ?? "", clientId: id });
       await Promise.all([invalidateTree(), queryClient.invalidateQueries({ queryKey: docKey(id) })]);
     } catch (e) {
       rollback();
       queryClient.removeQueries({ queryKey: docKey(id) });
-      toast.error(`Could not create the page: ${errorMessage(e)}`);
-      navigate({ to: "/$ws/wiki", params: { ws: ws.slug }, search: { project: project?.key } });
+      toast.error(`Could not create the ${kind}: ${errorMessage(e)}`);
+      if (open) navigate({ to: "/$ws/wiki", params: { ws: ws.slug }, search: { project: project?.key } });
     }
   };
 }
@@ -142,6 +151,43 @@ export async function toggleFavorite(doc: Pick<Doc, "id" | "workspaceId" | "favo
   } catch (e) {
     rollback();
     toast.error(errorMessage(e));
+  }
+}
+
+export async function renameDoc(workspaceId: string, id: string, title: string) {
+  const clean = title.trim() || "Untitled";
+  const undoTree = patchTree(workspaceId, (t) => t.map((n) => (n.id === id ? { ...n, title: clean } : n)));
+  const undoDoc = patchDoc(id, { title: clean });
+  try {
+    await client.doc.save({ id, title: clean });
+    invalidateTree();
+  } catch (e) {
+    undoTree();
+    undoDoc();
+    toast.error(`Could not rename: ${errorMessage(e)}`);
+  }
+}
+
+/**
+ * Moves a node into `parentId`, placed before `beforeId` (or last). Sort orders are floats, so a drop
+ * between two siblings takes their midpoint and nothing else has to be renumbered.
+ */
+export async function moveDocTo(workspaceId: string, id: string, parentId: string | null, beforeId?: string | null) {
+  const tree = queryClient.getQueryData<DocNode[]>(treeKey(workspaceId)) ?? [];
+  const siblings = (childrenMap(tree).get(parentId) ?? []).filter((n) => n.id !== id);
+  const at = beforeId ? siblings.findIndex((n) => n.id === beforeId) : -1;
+  let sortOrder: number;
+  if (at < 0) sortOrder = (siblings.at(-1)?.sortOrder ?? 0) + 1;
+  else sortOrder = at === 0 ? siblings[0]!.sortOrder - 1 : (siblings[at - 1]!.sortOrder + siblings[at]!.sortOrder) / 2;
+  const rollback = patchTree(workspaceId, (t) =>
+    t.map((n) => (n.id === id ? { ...n, parentId, sortOrder } : n.id === parentId ? { ...n, hasChildren: true } : n)),
+  );
+  try {
+    await client.doc.move({ id, parentId, sortOrder });
+    await Promise.all([invalidateTree(), queryClient.invalidateQueries({ queryKey: docKey(id) })]);
+  } catch (e) {
+    rollback();
+    toast.error(`Could not move: ${errorMessage(e)}`);
   }
 }
 

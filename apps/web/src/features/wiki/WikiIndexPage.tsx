@@ -1,5 +1,5 @@
 import type { DocNode } from "@mado/contract";
-import { Button, cn, IconButton, Input, Segmented, Spinner } from "@mado/ui";
+import { type ActionEntry, ActionMenu, Button, cn, ContextArea, IconButton, Input, Segmented, Spinner } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ChevronRight, FileText, Folder, FolderOpen, Plus, Search, Star } from "@mado/ui/fluent";
@@ -10,6 +10,7 @@ import { ago } from "../../lib/time";
 import { useWorkspace } from "../../lib/workspace";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
 import { childrenMap, useCreateDoc } from "./data";
+import { useDocActions } from "./DocTree";
 import { useIsPhone } from "./parts";
 
 type Row = { node: DocNode; depth: number; open: boolean };
@@ -37,6 +38,8 @@ function SectionTitle({ children }: { children: ReactNode }) {
   return <div className="px-2 pb-1.5 text-label font-medium text-ink-subtle">{children}</div>;
 }
 
+const expandable = (n: DocNode) => n.kind === "folder" || n.hasChildren;
+
 export function WikiIndexPage() {
   const ws = useWorkspace();
   const { project: projectKey } = useSearch({ from: "/$ws/wiki" });
@@ -44,6 +47,7 @@ export function WikiIndexPage() {
   const phone = useIsPhone();
   const project = ws.projects.find((p) => p.key === projectKey);
   const createDoc = useCreateDoc(ws);
+  const { forNode, createEntries } = useDocActions(ws);
   const [query, setQuery] = useState("");
   const [current, setCurrent] = useState(-1);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -71,7 +75,7 @@ export function WikiIndexPage() {
         if (keep && !keep.has(node.id)) continue;
         const open = keep ? true : !!expanded[node.id];
         out.push({ node, depth, open });
-        if (node.hasChildren && open) walk(node.id, depth + 1);
+        if (expandable(node) && open) walk(node.id, depth + 1);
       }
     };
     // Pages whose parent is outside the project scope still need a root.
@@ -82,13 +86,13 @@ export function WikiIndexPage() {
         if (!rootIds.has(node.id) || (keep && !keep.has(node.id))) continue;
         const open = keep ? true : !!expanded[node.id];
         out.push({ node, depth: 0, open });
-        if (node.hasChildren && open) walk(node.id, 1);
+        if (expandable(node) && open) walk(node.id, 1);
       }
     }
     return out;
   }, [scoped, byId, q, expanded]);
 
-  const recent = useMemo(() => (q ? [] : [...scoped].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5)), [scoped, q]);
+  const recent = useMemo(() => (q ? [] : scoped.filter((n) => n.kind !== "folder").sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5)), [scoped, q]);
   const favs = useMemo(() => (q ? [] : favorites.filter((f) => !project || f.projectId === project.id)), [favorites, project, q]);
   const nav = rows.map((r) => r.node);
 
@@ -98,6 +102,7 @@ export function WikiIndexPage() {
   useCommands(
     [
       { id: "wiki.new", title: "New page", subtitle: project ? `in ${project.name}` : undefined, keys: "d", hint: "D", group: "Wiki", run: () => createDoc({ projectId: project?.id }) },
+      { id: "wiki.newFolder", title: "New folder", subtitle: project ? `in ${project.name}` : undefined, keys: "Shift+D", hint: "⇧D", group: "Wiki", run: () => createDoc({ projectId: project?.id, kind: "folder" }) },
       { id: "wiki.filter", title: "Filter pages", keys: "Shift+F", hint: "⇧F", group: "Wiki", run: () => searchRef.current?.focus() },
       {
         id: "wiki.toggle",
@@ -106,7 +111,7 @@ export function WikiIndexPage() {
         group: "Wiki",
         run: () => {
           const r = rows[current];
-          if (r?.node.hasChildren) toggle(r.node.id);
+          if (r && expandable(r.node)) toggle(r.node.id);
         },
       },
     ],
@@ -125,8 +130,8 @@ export function WikiIndexPage() {
     ) : null;
 
   const pageRow = (n: DocNode, opts: { icon?: ReactNode; key: string }) => (
+    <ContextArea key={opts.key} entries={forNode(n)}>
     <Link
-      key={opts.key}
       to="/$ws/wiki/$docId"
       params={{ ws: ws.slug, docId: n.id }}
       className="flex h-8 items-center gap-2.5 rounded-md px-2 text-sm text-ink-muted outline-none hover:bg-state-hover active:bg-state-active max-md:h-11 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-subtle"
@@ -135,6 +140,7 @@ export function WikiIndexPage() {
       <span className="truncate text-ink">{n.title || "Untitled"}</span>
       <span className="ml-auto shrink-0 pl-3 text-label text-ink-subtle">{ago(n.updatedAt)}</span>
     </Link>
+    </ContextArea>
   );
 
   return (
@@ -143,11 +149,20 @@ export function WikiIndexPage() {
         crumbs={[{ label: project?.name ?? ws.name }, { label: "Wiki" }]}
         center={segmented}
         mobileActions={
-          <IconButton label="New page" size="touch" variant="secondary" className="rounded-full" onClick={() => createDoc({ projectId: project?.id })}>
-            <Plus className="size-[18px]" />
-          </IconButton>
+          <ActionMenu
+            entries={createEntries(null, project?.id)}
+            align="end"
+            trigger={
+              <IconButton label="New page or folder" size="touch" variant="secondary" className="rounded-full">
+                <Plus className="size-[18px]" />
+              </IconButton>
+            }
+          />
         }
       >
+        <IconButton label="New folder (⇧D)" onClick={() => createDoc({ projectId: project?.id, kind: "folder" })}>
+          <Folder />
+        </IconButton>
         <Button variant="primary" icon={<Plus />} kbd="D" onClick={() => createDoc({ projectId: project?.id })}>
           New page
         </Button>
@@ -210,10 +225,8 @@ export function WikiIndexPage() {
                     query={q}
                     wsSlug={ws.slug}
                     onToggle={() => toggle(r.node.id)}
-                    onAdd={() => {
-                      toggle(r.node.id, true);
-                      createDoc({ parentId: r.node.id });
-                    }}
+                    entries={forNode(r.node)}
+                    addEntries={createEntries(r.node.id).map((e) => ("label" in e && "onSelect" in e ? { ...e, label: `${e.label} inside`, onSelect: () => (toggle(r.node.id, true), e.onSelect()) } : e))}
                     onHover={() => setCurrent(i)}
                   />
                 ))}
@@ -245,7 +258,8 @@ function TreeRow({
   query,
   wsSlug,
   onToggle,
-  onAdd,
+  entries,
+  addEntries,
   onHover,
 }: {
   row: Row;
@@ -253,7 +267,8 @@ function TreeRow({
   query: string;
   wsSlug: string;
   onToggle: () => void;
-  onAdd: () => void;
+  entries: ActionEntry[];
+  addEntries: ActionEntry[];
   onHover: () => void;
 }) {
   const { node, depth, open } = row;
@@ -261,8 +276,9 @@ function TreeRow({
   useEffect(() => {
     if (selected) ref.current?.scrollIntoView({ block: "nearest" });
   }, [selected]);
-  const icon = node.hasChildren ? open ? <FolderOpen /> : <Folder /> : <FileText />;
+  const icon = node.kind === "folder" ? open ? <FolderOpen /> : <Folder /> : <FileText />;
   return (
+    <ContextArea entries={entries}>
     <div
       ref={ref}
       onMouseMove={onHover}
@@ -277,7 +293,7 @@ function TreeRow({
         tabIndex={-1}
         aria-label={open ? "Collapse" : "Expand"}
         onClick={onToggle}
-        className={cn("flex size-6 items-center justify-center rounded text-ink-faint hover:text-ink", !node.hasChildren && "invisible")}
+        className={cn("flex size-6 items-center justify-center rounded text-ink-faint hover:text-ink", !expandable(node) && "invisible")}
       >
         <ChevronRight className={cn(open && "rotate-90")} />
       </button>
@@ -292,9 +308,16 @@ function TreeRow({
         </span>
         <span className="ml-auto shrink-0 pl-3 text-label text-ink-subtle group-hover:hidden">{ago(node.updatedAt)}</span>
       </Link>
-      <IconButton label="New sub-page" size="sm" className="mr-1 hidden size-6 group-hover:inline-flex" onClick={onAdd}>
-        <Plus />
-      </IconButton>
+      <ActionMenu
+        entries={addEntries}
+        align="end"
+        trigger={
+          <IconButton label="Add inside" size="sm" className="mr-1 hidden size-6 group-hover:inline-flex data-[popup-open]:inline-flex max-md:inline-flex">
+            <Plus />
+          </IconButton>
+        }
+      />
     </div>
+    </ContextArea>
   );
 }
