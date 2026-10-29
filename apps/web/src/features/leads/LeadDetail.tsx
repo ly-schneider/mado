@@ -1,8 +1,8 @@
 import { type Lead, LEAD_STAGES, type LeadSummary, STAGE_LABEL } from "@mado/contract";
-import { Badge, Button, cn, IconButton, Menu, Spinner, StatusIcon } from "@mado/ui";
+import { Button, cn, IconButton, Menu, Spinner, StatusIcon } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Building2, CalendarDays, ChevronLeft, Copy, Link2, Mail, MoreHorizontal, RotateCcw, Sparkles, Trash2, User, X } from "@mado/ui/fluent";
+import { ChevronLeft, Copy, Link2, Mail, MoreHorizontal, RotateCcw, Sparkles, Trash2, X } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -100,36 +100,15 @@ export function LeadDetail({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-start gap-3 px-5 pb-3 pt-4">
+      <div className={cn("flex items-center gap-2 pr-3", fullscreen ? "h-[52px] pl-3 md:pl-4" : "h-[52px] pl-[11px]")}>
         {fullscreen && (
-          <IconButton label="Back" size="touch" variant="secondary" className="-ml-1 rounded-full" onClick={onClose}>
+          <IconButton label="Back" size="touch" variant="secondary" className="shrink-0 rounded-full md:size-8" onClick={onClose}>
             <ChevronLeft className="size-[18px]" />
           </IconButton>
         )}
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-edge bg-raised text-ink-subtle">
-          <Building2 className="size-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <FlatInput
-            label="Company"
-            value={l.company.name}
-            required
-            className="-ml-1 h-7 text-base font-semibold"
-            onSave={(name) => patch({ company: { name } })}
-          />
-          <FlatInput
-            label="Location and details"
-            value={[l.company.location, l.company.details].filter(Boolean).join(" · ")}
-            placeholder="Location · details"
-            className="-ml-1 h-6 text-label text-ink-subtle"
-            onSave={(v) => {
-              const [location = "", ...rest] = v.split("·").map((s) => s.trim());
-              patch({ company: { location, details: rest.join(" · ") } });
-            }}
-          />
-        </div>
+        <FlatInput label="Company" value={l.company.name} required className="h-8 text-base font-semibold" onSave={(name) => patch({ company: { name } })} />
         <Menu.Root>
-          <Menu.Trigger className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-edge bg-raised px-2.5 text-label font-medium text-ink outline-none hover:bg-state-hover">
+          <Menu.Trigger className="flex h-7 shrink-0 items-center gap-1.5 rounded-full border border-edge px-2.5 text-label font-medium text-ink outline-none hover:bg-state-hover">
             <StatusIcon status={STAGE_ICON[l.stage]} />
             {STAGE_LABEL[l.stage]}
           </Menu.Trigger>
@@ -142,7 +121,7 @@ export function LeadDetail({
           </Menu.Popup>
         </Menu.Root>
         <Menu.Root>
-          <Menu.Trigger render={<IconButton label="More" size="sm" />}>
+          <Menu.Trigger render={<IconButton label="More" size="sm" className="shrink-0" />}>
             <MoreHorizontal />
           </Menu.Trigger>
           <Menu.Popup align="end">
@@ -162,58 +141,71 @@ export function LeadDetail({
         </Menu.Root>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-32 md:pb-6">
-        <div className="flex flex-col">
-          <FieldRow icon={<User />} label="Contact">
-            <FlatInput
-              label="Contact"
-              placeholder="Name · role"
-              value={l.contact ? [l.contact.name, l.contact.role].filter(Boolean).join(" · ") : ""}
-              onSave={(v) => {
-                const [name = "", ...role] = v.split("·").map((s) => s.trim());
-                patch({ contact: { name, role: role.join(" · ") } });
-              }}
-            />
-          </FieldRow>
-          <FieldRow icon={<Mail />} label="Email">
-            <FlatInput label="Email" type="email" placeholder="name@company.ch" value={l.contact?.email ?? ""} onSave={(email) => patch({ contact: { email } })} />
-          </FieldRow>
-          <FieldRow icon={<Link2 />} label="Source">
-            <FlatInput
-              label="Source"
-              placeholder={l.owner.type === "agent" ? `via ${l.owner.name}` : "Referral, event, walk-in…"}
-              value={l.source}
-              onSave={(source) => patch({ source })}
-            />
-          </FieldRow>
-          <FieldRow icon={<CalendarDays />} label="Last contact">
-            <div className="flex min-w-0 flex-1 items-center gap-1">
-              <DateButton value={l.lastContactAt} onChange={(v) => patch({ lastContactAt: v })} />
-              <span className="text-ink-faint">·</span>
-              <FlatInput label="Last contact note" placeholder="what happened" value={l.lastContactNote} onSave={(lastContactNote) => patch({ lastContactNote })} />
-            </div>
-          </FieldRow>
-        </div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-32 md:pb-8">
+        <div className={cn("mx-auto flex w-full flex-col gap-7 px-4 pt-2", fullscreen && "max-w-[640px]")}>
+          <dl className="flex flex-col">
+            <FieldRow label="Contact">
+              <FlatInput
+                label="Contact"
+                placeholder="Name · role"
+                value={l.contact ? [l.contact.name, l.contact.role].filter(Boolean).join(" · ") : ""}
+                onSave={(v) => {
+                  const [name = "", ...role] = v.split("·").map((s) => s.trim());
+                  patch({ contact: { name, role: role.join(" · ") } });
+                }}
+              />
+            </FieldRow>
+            <FieldRow label="Email">
+              <FlatInput label="Email" type="email" placeholder="name@company.ch" value={l.contact?.email ?? ""} onSave={(email) => patch({ contact: { email } })} />
+            </FieldRow>
+            <FieldRow label="Location">
+              <FlatInput
+                label="Location and details"
+                value={[l.company.location, l.company.details].filter(Boolean).join(" · ")}
+                placeholder="Location · details"
+                onSave={(v) => {
+                  const [location = "", ...rest] = v.split("·").map((s) => s.trim());
+                  patch({ company: { location, details: rest.join(" · ") } });
+                }}
+              />
+            </FieldRow>
+            <FieldRow label="Source">
+              <FlatInput
+                label="Source"
+                placeholder={l.owner.type === "agent" ? `via ${l.owner.name}` : "Referral, event, walk-in…"}
+                value={l.source}
+                onSave={(source) => patch({ source })}
+              />
+            </FieldRow>
+            <FieldRow label="Last contact">
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <DateButton value={l.lastContactAt} onChange={(v) => patch({ lastContactAt: v })} />
+                <span className="text-ink-faint">·</span>
+                <FlatInput label="Last contact note" placeholder="what happened" value={l.lastContactNote} onSave={(lastContactNote) => patch({ lastContactNote })} />
+              </div>
+            </FieldRow>
+          </dl>
 
-        <Notes
-          key={l.id}
-          value={l.notes}
-          loading={placeholder}
-          wsSlug={ws.slug}
-          workspaceId={ws.id}
-          onSave={(notes) => patch({ notes })}
-        />
-
-        <div className="mt-3 flex flex-col gap-3">
-          <AnalysisCard lead={l} disabled={placeholder} />
-          <DraftCard lead={l} disabled={placeholder} />
+          <Section title="Notes">
+            <Notes key={l.id} value={l.notes} loading={placeholder} wsSlug={ws.slug} workspaceId={ws.id} onSave={(notes) => patch({ notes })} />
+          </Section>
+          <Analysis lead={l} disabled={placeholder} />
+          <Draft lead={l} disabled={placeholder} />
         </div>
-        <p className="mt-4 text-label text-ink-faint">
-          {l.owner.type === "agent" ? `Created by ${l.owner.name} (agent)` : `Owner ${l.owner.name}`}
-          {l.updatedAt && ` · updated ${shortDate(l.updatedAt)}`}
-        </p>
       </div>
     </div>
+  );
+}
+
+function Section({ title, actions, children }: { title: string; actions?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <header className="flex h-7 items-center gap-1">
+        <h3 className="mr-auto text-sm font-medium text-ink">{title}</h3>
+        {actions}
+      </header>
+      {children}
+    </section>
   );
 }
 
@@ -248,12 +240,11 @@ function DateButton({ value, onChange }: { value: string | null; onChange: (v: s
   );
 }
 
-function FieldRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
+function FieldRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-7 items-center gap-2.5 [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-ink-subtle">
-      {icon}
-      <span className="w-[96px] shrink-0 text-sm text-ink-subtle">{label}</span>
-      {children}
+    <div className="flex min-h-8 items-center gap-3 max-md:min-h-11">
+      <dt className="w-[104px] shrink-0 text-sm text-ink-subtle">{label}</dt>
+      <dd className="flex min-w-0 flex-1">{children}</dd>
     </div>
   );
 }
@@ -334,16 +325,16 @@ function Notes({
     setEditing(false);
     if (draft !== value) onSave(draft);
   };
-  if (loading) return <div className="mt-3 h-12 rounded-md bg-state-hover" />;
+  if (loading) return <div className="h-12 rounded-md bg-state-hover" />;
   if (editing) {
     return (
-      <div className="mt-3 rounded-md border border-accent bg-panel px-2.5 py-2">
+      <div className="-mx-1 rounded-md border border-accent bg-panel px-2.5 py-2">
         <MarkdownEditor variant="compact" autoFocus value={draft} onChange={setDraft} onBlur={commit} onSubmit={commit} placeholder="Notes" workspaceId={workspaceId} />
       </div>
     );
   }
   return (
-    <button type="button" className="mt-3 -mx-1 block w-[calc(100%+8px)] rounded-md px-1 py-1 text-left outline-none hover:bg-state-hover" onClick={() => setEditing(true)}>
+    <button type="button" className="-mx-1 block w-[calc(100%+8px)] rounded-md px-1 py-1 text-left outline-none hover:bg-state-hover" onClick={() => setEditing(true)}>
       {value ? (
         <MarkdownView markdown={value} wsSlug={wsSlug} workspaceId={workspaceId} className="text-sm text-ink-muted" />
       ) : (
@@ -360,7 +351,7 @@ function useAiReady() {
 function NeedsKey() {
   const ws = useWorkspace();
   return (
-    <p className="text-label text-ink-subtle">
+    <p className="text-sm text-ink-subtle">
       Needs an OpenRouter key.{" "}
       <Link to="/$ws/settings/$section" params={{ ws: ws.slug, section: "ai" }} className="text-accent">
         Settings › AI
@@ -373,7 +364,7 @@ function setLead(l: Lead) {
   queryClient.setQueryData(orpc.crm.get.queryKey({ input: { id: l.id } }), l);
 }
 
-function AnalysisCard({ lead, disabled }: { lead: Lead; disabled: boolean }) {
+function Analysis({ lead, disabled }: { lead: Lead; disabled: boolean }) {
   const ws = useWorkspace();
   const ai = useAiReady();
   const analyze = useMutation({
@@ -382,47 +373,45 @@ function AnalysisCard({ lead, disabled }: { lead: Lead; disabled: boolean }) {
     onError: (e) => toast.error(`Analysis failed: ${errorMessage(e)}`),
   });
   const a = lead.analysis;
+  const noKey = ai.data && !ai.data.hasKey;
   return (
-    <section className="rounded-lg border border-edge">
-      <header className="flex h-10 items-center gap-2 px-3.5">
-        <Sparkles className="size-4 text-ink-subtle" />
-        <span className="text-sm font-medium text-ink">AI analysis</span>
-        <span className="ml-auto flex items-center gap-2 text-label text-ink-subtle">
-          {a && (
-            <IconButton label="Analyse again" size="sm" className="-mr-1.5" disabled={analyze.isPending} onClick={() => analyze.mutate()}>
-              {analyze.isPending ? <Spinner className="size-3.5" /> : <RotateCcw />}
-            </IconButton>
-          )}
-        </span>
-      </header>
-      <div className="px-3.5 pb-3">
-        {a ? (
-          <dl className="flex flex-col gap-1.5">
-            {a.rows.map((r) => (
-              <div key={r.label} className="flex gap-3 text-label">
-                <dt className="w-[60px] shrink-0 text-ink-subtle">{r.label}</dt>
-                <dd className="min-w-0 text-ink-muted">
-                  <LinkedText text={r.text} wsSlug={ws.slug} />
-                </dd>
-              </div>
-            ))}
-          </dl>
-        ) : ai.data && !ai.data.hasKey ? (
-          <NeedsKey />
+    <Section
+      title="AI analysis"
+      actions={
+        a ? (
+          <IconButton label="Analyse again" size="sm" disabled={analyze.isPending} onClick={() => analyze.mutate()}>
+            {analyze.isPending ? <Spinner className="size-3.5" /> : <RotateCcw />}
+          </IconButton>
         ) : (
-          <div className="flex items-center gap-3">
-            <p className="flex-1 text-label text-ink-subtle">Fit, timing and risk from the notes and linked tasks.</p>
-            <Button size="sm" icon={<Sparkles />} disabled={disabled} loading={analyze.isPending} onClick={() => analyze.mutate()}>
+          !noKey && (
+            <Button size="sm" variant="ghost" icon={<Sparkles />} disabled={disabled} loading={analyze.isPending} onClick={() => analyze.mutate()}>
               Analyse
             </Button>
-          </div>
-        )}
-      </div>
-    </section>
+          )
+        )
+      }
+    >
+      {a ? (
+        <dl className="flex flex-col gap-1.5">
+          {a.rows.map((r) => (
+            <div key={r.label} className="flex gap-3 text-sm">
+              <dt className="w-[104px] shrink-0 text-ink-subtle">{r.label}</dt>
+              <dd className="min-w-0 text-ink-muted">
+                <LinkedText text={r.text} wsSlug={ws.slug} />
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : noKey ? (
+        <NeedsKey />
+      ) : (
+        <p className="text-sm text-ink-faint">Not analysed yet.</p>
+      )}
+    </Section>
   );
 }
 
-function DraftCard({ lead, disabled }: { lead: Lead; disabled: boolean }) {
+function Draft({ lead, disabled }: { lead: Lead; disabled: boolean }) {
   const ai = useAiReady();
   const [language, setLanguage] = useState<"de" | "en">((lead.draft?.language as "de" | "en") ?? "de");
   const draft = useMutation({
@@ -434,59 +423,54 @@ function DraftCard({ lead, disabled }: { lead: Lead; disabled: boolean }) {
   const email = lead.contact?.email ?? "";
   const mailto = d ? `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(d.subject)}&body=${encodeURIComponent(d.body)}` : "";
   const subjectLabel = d?.language === "de" ? "Betreff" : "Subject";
+  const noKey = ai.data && !ai.data.hasKey;
 
   return (
-    <section className="flex flex-col rounded-lg border border-edge">
-      <header className="flex h-10 items-center gap-2 border-b border-edge px-3.5">
-        <Mail className="size-4 text-ink-subtle" />
-        <span className="text-sm font-medium text-ink">Draft</span>
-        {d && <Badge>{d.language.toUpperCase()} · personal</Badge>}
-        {d && (
-          <IconButton label="Write again" size="sm" className="-mr-1.5 ml-auto" disabled={draft.isPending} onClick={() => draft.mutate(language)}>
-            {draft.isPending ? <Spinner className="size-3.5" /> : <RotateCcw />}
-          </IconButton>
-        )}
-      </header>
-      {d ? (
-        <>
-          <div className="flex flex-col gap-2 px-3.5 py-3">
-            <div className="text-label text-ink-subtle">
-              {subjectLabel}: <span className="font-medium text-ink">{d.subject}</span>
-            </div>
-            <div className="whitespace-pre-wrap text-sm text-ink-muted">{d.body}</div>
-          </div>
-          <footer className="flex flex-wrap items-center gap-2 border-t border-edge py-2 pl-3.5 pr-2">
-            <Button variant="ghost" className="ml-auto" onClick={() => window.open(mailto, "_self")} title={email ? `Opens your mail app addressed to ${email}` : "No email on this lead"}>
+    <Section
+      title="Draft"
+      actions={
+        d ? (
+          <>
+            <IconButton label="Write again" size="sm" disabled={draft.isPending} onClick={() => draft.mutate(language)}>
+              {draft.isPending ? <Spinner className="size-3.5" /> : <RotateCcw />}
+            </IconButton>
+            <Button size="sm" variant="ghost" onClick={() => window.open(mailto, "_self")} title={email ? `To ${email}` : "No email on this lead"}>
               Open in Mail
             </Button>
-            <Button icon={<Copy />} onClick={() => copyText(`${subjectLabel}: ${d.subject}\n\n${d.body}`, "Draft copied")}>
+            <Button size="sm" variant="ghost" icon={<Copy />} onClick={() => copyText(`${subjectLabel}: ${d.subject}\n\n${d.body}`, "Draft copied")}>
               Copy
             </Button>
-          </footer>
-        </>
-      ) : (
-        <div className="px-3.5 py-3">
-          {ai.data && !ai.data.hasKey ? (
-            <NeedsKey />
-          ) : (
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="min-w-0 flex-1 text-label text-ink-subtle">A short personal email with an opt-out line. You send it yourself.</p>
+          </>
+        ) : (
+          !noKey && (
+            <>
               <select
                 aria-label="Language"
                 value={language}
                 onChange={(e) => setLanguage(e.target.value as "de" | "en")}
-                className="h-7 rounded-md border border-edge bg-panel px-1.5 text-label text-ink outline-none focus:border-accent"
+                className="h-7 rounded-md bg-transparent px-1 text-label text-ink-muted outline-none hover:bg-state-hover focus:text-ink"
               >
                 <option value="de">Deutsch</option>
                 <option value="en">English</option>
               </select>
-              <Button size="sm" icon={<Mail />} disabled={disabled} loading={draft.isPending} onClick={() => draft.mutate(language)}>
+              <Button size="sm" variant="ghost" icon={<Mail />} disabled={disabled} loading={draft.isPending} onClick={() => draft.mutate(language)}>
                 Draft email
               </Button>
-            </div>
-          )}
+            </>
+          )
+        )
+      }
+    >
+      {d ? (
+        <div className="flex flex-col gap-2 rounded-lg bg-raised px-3.5 py-3">
+          <div className="text-sm font-medium text-ink">{d.subject}</div>
+          <div className="whitespace-pre-wrap text-sm text-ink-muted">{d.body}</div>
         </div>
+      ) : noKey ? (
+        <NeedsKey />
+      ) : (
+        <p className="text-sm text-ink-faint">No draft yet.</p>
       )}
-    </section>
+    </Section>
   );
 }

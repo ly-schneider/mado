@@ -1,8 +1,8 @@
 import { LEAD_STAGES, type LeadStage, type LeadSummary, type Project, STAGE_LABEL } from "@mado/contract";
-import { Avatar, Button, Checkbox, cn, Dialog, EmptyState, Field, IconButton, Input, Popover, Segmented, Select, Spinner, StatusIcon } from "@mado/ui";
+import { Avatar, Button, Checkbox, cn, Dialog, Field, IconButton, Input, Popover, Segmented, Select, Spinner, StatusIcon } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Briefcase, Building2, ListFilter, Plus } from "@mado/ui/fluent";
+import { ListFilter, Plus } from "@mado/ui/fluent";
 import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";
@@ -88,7 +88,7 @@ function Leads({ project }: { project: Project }) {
   );
 
   const detailOnly = !!selected && !split;
-  const crumbs = [{ label: "Leads" }];
+  const crumbs = [{ label: project.name }, { label: "Leads" }];
 
   const detail = selected && (
     <LeadDetail
@@ -111,17 +111,14 @@ function Leads({ project }: { project: Project }) {
       <PageHeader
         crumbs={crumbs}
         center={
-          <div className="-ml-1 flex items-center gap-3">
-            <span className="text-sm text-ink-subtle">{all.length}</span>
-            <Segmented<View>
-              value={view}
-              onChange={(v) => go({ view: v })}
-              options={[
-                { value: "list", label: "List" },
-                { value: "pipeline", label: "Pipeline" },
-              ]}
-            />
-          </div>
+          <Segmented<View>
+            value={view}
+            onChange={(v) => go({ view: v })}
+            options={[
+              { value: "list", label: "List" },
+              { value: "pipeline", label: "Pipeline" },
+            ]}
+          />
         }
         mobileActions={
           <IconButton label="New lead" size="touch" variant="secondary" className="rounded-full" onClick={() => setCreating("new")}>
@@ -136,19 +133,15 @@ function Leads({ project }: { project: Project }) {
       </PageHeader>
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <MobileTitle title="Leads" subtitle={`${project.name} · ${all.length}`} />
+          <MobileTitle title="Leads" />
           {leads.isPending ? (
             <div className="flex flex-1 items-center justify-center">
               <Spinner />
             </div>
           ) : leads.isError ? (
-            <EmptyState icon={<Briefcase />} title="Couldn't load leads">
-              {errorMessage(leads.error)}
-            </EmptyState>
+            <p className="px-4 py-16 text-center text-sm text-ink-subtle">{errorMessage(leads.error)}</p>
           ) : all.length === 0 ? (
-            <EmptyState icon={<Briefcase />} title="No leads yet">
-              Add one with <span className="font-medium text-ink-muted">L</span>, or let an agent with CRM access create them.
-            </EmptyState>
+            <p className="px-4 py-16 text-center text-sm text-ink-subtle">No leads yet.</p>
           ) : view === "list" ? (
             <LeadList groups={groups} selected={selected} cursor={flat[cursor]?.id} onOpen={open} phone={phone} />
           ) : (
@@ -234,7 +227,6 @@ function LeadList({
                 l.stage === "lost" && "opacity-60",
               )}
             >
-              <Building2 className="size-4 shrink-0 text-ink-subtle" />
               {phone ? (
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-touch text-ink">{l.company.name}</span>
@@ -324,20 +316,13 @@ function Pipeline({
                 onDragEnd={() => setOver(null)}
                 onClick={() => onOpen(l)}
                 className={cn(
-                  "flex flex-col gap-2 rounded-lg border border-edge bg-raised p-3 text-left outline-none active:scale-[0.99]",
-                  selected === l.id && "border-accent bg-state-selected",
+                  "flex flex-col gap-1 rounded-lg bg-raised px-3 py-2.5 text-left outline-none active:scale-[0.99]",
+                  selected === l.id && "bg-state-selected shadow-[inset_0_0_0_1px_var(--color-accent)]",
                   l.stage === "lost" && "opacity-60",
                 )}
               >
-                <span className="flex items-center gap-2">
-                  <Building2 className="size-4 shrink-0 text-ink-subtle" />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{l.company.name}</span>
-                  <OwnerAvatar lead={l} />
-                </span>
-                {(l.contact?.name || l.company.location) && (
-                  <span className="truncate text-label text-ink-muted">{[l.contact?.name, l.company.location].filter(Boolean).join(" · ")}</span>
-                )}
-                <span className="text-label text-ink-subtle">{l.lastContactAt ? shortDate(l.lastContactAt) : "—"}</span>
+                <span className="truncate text-sm font-medium text-ink">{l.company.name}</span>
+                {l.contact?.name && <span className="truncate text-label text-ink-subtle">{l.contact.name}</span>}
               </button>
             ))}
           </div>
@@ -361,7 +346,7 @@ function NewLeadDialog({
   defaultStage: LeadStage;
 }) {
   const phone = useIsPhone();
-  const empty = { company: "", location: "", contact: "", email: "", source: "", stage: defaultStage };
+  const empty = { company: "", contact: "", email: "", stage: defaultStage };
   const [f, setF] = useState(empty);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the dialog opens
   useEffect(() => {
@@ -374,10 +359,10 @@ function NewLeadDialog({
       client.crm.create({
         projectId: project.id,
         clientId: v.clientId,
-        company: { name: v.company.trim(), location: v.location.trim(), details: "" },
+        company: { name: v.company.trim(), location: "", details: "" },
         contact: v.contact.trim() || v.email.trim() ? { name: v.contact.trim() || v.email.trim(), email: v.email.trim(), role: "" } : undefined,
         stage: v.stage,
-        source: v.source.trim(),
+        source: "",
         notes: "",
       }),
     onMutate: (v) => {
@@ -388,8 +373,8 @@ function NewLeadDialog({
         id: v.clientId,
         projectId: project.id,
         stage: v.stage,
-        source: v.source.trim(),
-        company: { id: "", name: v.company.trim(), location: v.location.trim(), details: "", website: "" },
+        source: "",
+        company: { id: "", name: v.company.trim(), location: "", details: "", website: "" },
         contact: v.contact.trim() ? { id: "", name: v.contact.trim(), email: v.email.trim(), role: "", phone: "" } : null,
         lastContactAt: null,
         owner: { type: "user", id: me?.id ?? "", name: me?.name ?? "", initials: me?.initials ?? null },
@@ -410,7 +395,7 @@ function NewLeadDialog({
 
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
   return (
-    <Dialog open={open} onOpenChange={onOpenChange} title="New lead" position={phone ? "sheet" : "top"} className="md:max-w-[520px]">
+    <Dialog open={open} onOpenChange={onOpenChange} title="New lead" position={phone ? "sheet" : "top"} className="max-md:top-auto md:max-w-[480px]">
       <form
         className="flex flex-col gap-4 p-5"
         onSubmit={(e) => {
@@ -421,16 +406,10 @@ function NewLeadDialog({
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) e.currentTarget.requestSubmit();
         }}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-label font-medium text-ink-subtle">{project.key}</span>
-          <h2 className="text-base font-semibold text-ink">New lead</h2>
-        </div>
+        <h2 className="text-base font-semibold text-ink">New lead</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Company">
             <Input autoFocus required touch={phone} placeholder="Bistro Musterplatz" value={f.company} onChange={set("company")} />
-          </Field>
-          <Field label="Location">
-            <Input touch={phone} placeholder="Musterwil" value={f.location} onChange={set("location")} />
           </Field>
           <Field label="Contact">
             <Input touch={phone} placeholder="Jonas Muster" value={f.contact} onChange={set("contact")} />
@@ -438,15 +417,12 @@ function NewLeadDialog({
           <Field label="Email">
             <Input touch={phone} type="email" placeholder="hallo@bistro-musterplatz.example" value={f.email} onChange={set("email")} />
           </Field>
-          <Field label="Source">
-            <Input touch={phone} placeholder="Referral, event, walk-in…" value={f.source} onChange={set("source")} />
-          </Field>
           <Field label="Stage">
             <Select<LeadStage> value={f.stage} onChange={(stage) => setF({ ...f, stage })} options={LEAD_STAGES.map((s) => ({ value: s, label: STAGE_LABEL[s] }))} />
           </Field>
         </div>
         <div className="flex justify-end gap-2">
-          <Button size={phone ? "touch" : "md"} onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" size={phone ? "touch" : "md"} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button type="submit" variant="primary" size={phone ? "touch" : "md"} kbd={phone ? undefined : "⌘↵"} disabled={!f.company.trim()}>

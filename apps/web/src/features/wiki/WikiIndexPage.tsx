@@ -1,8 +1,8 @@
 import type { DocNode } from "@mado/contract";
-import { Button, cn, EmptyState, IconButton, Input, Segmented, Spinner } from "@mado/ui";
+import { Button, cn, IconButton, Input, Segmented, Spinner } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { BookOpen, ChevronRight, FileText, Folder, FolderOpen, Plus, Search, Star } from "@mado/ui/fluent";
+import { ChevronRight, FileText, Folder, FolderOpen, Plus, Search, Star } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { orpc } from "../../lib/orpc";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";
@@ -10,6 +10,7 @@ import { ago } from "../../lib/time";
 import { useWorkspace } from "../../lib/workspace";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
 import { childrenMap, useCreateDoc } from "./data";
+import { useIsPhone } from "./parts";
 
 type Row = { node: DocNode; depth: number; open: boolean };
 
@@ -32,19 +33,15 @@ function useExpanded(key: string) {
   return [open, toggle] as const;
 }
 
-function SectionTitle({ children, count }: { children: ReactNode; count?: number }) {
-  return (
-    <div className="flex items-center gap-1.5 px-2 pb-1.5 text-label">
-      <span className="font-medium text-ink-subtle">{children}</span>
-      {count !== undefined && <span className="text-ink-faint">{count}</span>}
-    </div>
-  );
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <div className="px-2 pb-1.5 text-label font-medium text-ink-subtle">{children}</div>;
 }
 
 export function WikiIndexPage() {
   const ws = useWorkspace();
   const { project: projectKey } = useSearch({ from: "/$ws/wiki" });
   const navigate = useNavigate();
+  const phone = useIsPhone();
   const project = ws.projects.find((p) => p.key === projectKey);
   const createDoc = useCreateDoc(ws);
   const [query, setQuery] = useState("");
@@ -56,7 +53,6 @@ export function WikiIndexPage() {
 
   const scoped = useMemo(() => (tree ?? []).filter((n) => !project || n.projectId === project.id), [tree, project]);
   const byId = useMemo(() => new Map(scoped.map((n) => [n.id, n])), [scoped]);
-  const parentTitle = (n: DocNode) => (n.parentId ? (byId.get(n.parentId)?.title ?? "") : (ws.projects.find((p) => p.id === n.projectId)?.name ?? "Workspace"));
 
   const q = query.trim().toLowerCase();
   const rows = useMemo(() => {
@@ -128,7 +124,7 @@ export function WikiIndexPage() {
       />
     ) : null;
 
-  const pageRow = (n: DocNode, opts: { meta?: ReactNode; icon?: ReactNode; key: string }) => (
+  const pageRow = (n: DocNode, opts: { icon?: ReactNode; key: string }) => (
     <Link
       key={opts.key}
       to="/$ws/wiki/$docId"
@@ -137,8 +133,7 @@ export function WikiIndexPage() {
     >
       {opts.icon ?? <FileText />}
       <span className="truncate text-ink">{n.title || "Untitled"}</span>
-      <span className="truncate text-label text-ink-faint">{parentTitle(n)}</span>
-      <span className="ml-auto shrink-0 pl-3 text-label text-ink-subtle">{opts.meta ?? ago(n.updatedAt)}</span>
+      <span className="ml-auto shrink-0 pl-3 text-label text-ink-subtle">{ago(n.updatedAt)}</span>
     </Link>
   );
 
@@ -153,44 +148,35 @@ export function WikiIndexPage() {
           </IconButton>
         }
       >
-        <Input
-          ref={searchRef}
-          icon={<Search />}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              setQuery("");
-              e.currentTarget.blur();
-            }
-            if (e.key === "ArrowDown" || e.key === "Enter") {
-              e.preventDefault();
-              e.currentTarget.blur();
-              if (e.key === "Enter" && nav.length > 0) open(nav[Math.max(0, current)]!);
-              else setCurrent(0);
-            }
-          }}
-          placeholder="Filter pages"
-          className="w-56"
-        />
         <Button variant="primary" icon={<Plus />} kbd="D" onClick={() => createDoc({ projectId: project?.id })}>
           New page
         </Button>
       </PageHeader>
-      <MobileTitle title="Wiki" subtitle={`${project?.name ?? ws.name} · ${pageCount} ${pageCount === 1 ? "page" : "pages"}`} />
+      <MobileTitle title="Wiki" />
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-[880px] flex-col gap-8 px-2 pb-32 pt-2 md:px-6 md:pt-8">
-          <div className="hidden items-end justify-between px-2 md:flex">
-            <div>
-              <h1 className="text-display text-ink">Wiki</h1>
-              <p className="mt-1 text-sm text-ink-subtle">
-                {project?.name ?? `All of ${ws.name}`} · {pageCount} {pageCount === 1 ? "page" : "pages"}
-              </p>
-            </div>
-          </div>
-          <div className="px-2 md:hidden">
-            <Input touch icon={<Search />} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter pages" />
+        <div className="mx-auto flex w-full max-w-[880px] flex-col gap-8 px-2 pb-32 pt-2 md:px-6 md:pt-6">
+          <div className="px-2">
+            <Input
+              ref={searchRef}
+              touch={phone}
+              icon={<Search />}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setQuery("");
+                  e.currentTarget.blur();
+                }
+                if (e.key === "ArrowDown" || e.key === "Enter") {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                  if (e.key === "Enter" && nav.length > 0) open(nav[Math.max(0, current)]!);
+                  else setCurrent(0);
+                }
+              }}
+              placeholder="Filter pages"
+            />
           </div>
 
           {isPending ? (
@@ -198,30 +184,23 @@ export function WikiIndexPage() {
               <Spinner />
             </div>
           ) : pageCount === 0 ? (
-            <EmptyState icon={<BookOpen />} title="No pages yet">
-              <span className="mb-3 block">Architecture notes, decisions and runbooks live here, in plain Markdown that agents read too.</span>
-              <Button variant="primary" icon={<Plus />} kbd="D" onClick={() => createDoc({ projectId: project?.id })}>
-                New page
-              </Button>
-            </EmptyState>
+            <p className="px-2 py-6 text-sm text-ink-subtle">No pages yet.</p>
           ) : (
             <>
               {favs.length > 0 && (
                 <section>
-                  <SectionTitle count={favs.length}>Favorites</SectionTitle>
+                  <SectionTitle>Favorites</SectionTitle>
                   {favs.map((n) => pageRow(n, { key: n.id, icon: <Star className="fill-current" /> }))}
                 </section>
               )}
               {recent.length > 0 && (
                 <section>
                   <SectionTitle>Recently edited</SectionTitle>
-                  {recent.map((n) => pageRow(n, { key: n.id, meta: ago(n.updatedAt, { long: true }) }))}
+                  {recent.map((n) => pageRow(n, { key: n.id }))}
                 </section>
               )}
               <section>
-                <SectionTitle count={q ? rows.filter((r) => r.node.title.toLowerCase().includes(q)).length : pageCount}>
-                  {q ? "Matching pages" : "All pages"}
-                </SectionTitle>
+                <SectionTitle>{q ? "Matching pages" : "All pages"}</SectionTitle>
                 {rows.length === 0 && <div className="px-2 py-6 text-sm text-ink-subtle">No page title contains “{query.trim()}”.</div>}
                 {rows.map((r, i) => (
                   <TreeRow

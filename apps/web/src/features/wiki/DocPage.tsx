@@ -29,7 +29,7 @@ import { pushRecent } from "../../lib/ui";
 import { useMe, useWorkspace } from "../../lib/workspace";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownView } from "../editor/MarkdownView";
-import { outline, readMinutes, wordCount } from "../editor/markdown";
+import { outline } from "../editor/markdown";
 import { type Crumb, PageHeader } from "../shell/PageHeader";
 import { useAutosave } from "./autosave";
 import { exportDoc, invalidateTree, moveDoc, patchDoc, patchTree, toggleFavorite, useCreateDoc, useDeleteDoc } from "./data";
@@ -117,7 +117,6 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
   const history = !!search.history;
   const content = useDeferredValue(save.content);
   const headings = useMemo(() => outline(content), [content]);
-  const words = useMemo(() => wordCount(content), [content]);
   const parent = doc.path[doc.path.length - 1];
   const freshTitle = !doc.content && (doc.title === "" || doc.title === "Untitled") && doc.canEdit;
 
@@ -339,8 +338,8 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
             {doc.canEdit && (
               <Popover.Root open={shareOpen && !phone} onOpenChange={setShareOpen}>
                 <Popover.Trigger render={<Button icon={<Share />} />}>Share</Popover.Trigger>
-                <Popover.Popup align="end" className="w-[400px]">
-                  <SharePanel docId={doc.id} docTitle={save.title} workspaceId={ws.id} />
+                <Popover.Popup align="end" className="w-[360px]">
+                  <SharePanel docId={doc.id} workspaceId={ws.id} />
                 </Popover.Popup>
               </Popover.Root>
             )}
@@ -378,7 +377,7 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
                     autoFocus={freshTitle && !phone}
                     className="max-md:text-[28px] max-md:leading-[34px]"
                   />
-                  <EditedBy actor={doc.updatedBy} at={doc.updatedAt} meId={me?.id} suffix={` · ${readMinutes(words)} min read`} className="mt-2 md:hidden" />
+                  <EditedBy actor={doc.updatedBy} at={doc.updatedAt} meId={me?.id} state={save.state} className="mt-2 md:hidden" />
                   <div className="mt-4">
                     {editable ? (
                       <MarkdownEditor
@@ -424,7 +423,8 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
       {phone && (
         <Dialog open={shareOpen} onOpenChange={setShareOpen} position="sheet" title="Share" className="top-auto max-h-[85dvh]">
           <div className="overflow-y-auto pb-safe">
-            <SharePanel docId={doc.id} docTitle={save.title} workspaceId={ws.id} />
+            <div className="px-4 pt-4 text-base font-semibold text-ink">Share</div>
+            <SharePanel docId={doc.id} workspaceId={ws.id} />
           </div>
         </Dialog>
       )}

@@ -386,8 +386,13 @@ function build(view: EditorView): DecorationSet {
         wiki.push([a, b]);
         const inner = m[1]!;
         const pipe = inner.indexOf("|");
-        mark("cm-md-mark", a, a + 2);
-        mark("cm-md-mark", b - 2, b);
+        if (lineActive(a)) {
+          mark("cm-md-mark", a, a + 2);
+          mark("cm-md-mark", b - 2, b);
+        } else {
+          hide(a, a + 2);
+          hide(b - 2, b);
+        }
         if (pipe >= 0 && !lineActive(a)) {
           hide(a + 2, a + 3 + pipe);
           mark("cm-wikilink", a + 3 + pipe, b - 2, { "data-title": inner });
