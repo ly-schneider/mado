@@ -1,8 +1,8 @@
 import { type Lead, LEAD_STAGES, type LeadSummary, STAGE_LABEL } from "@mado/contract";
-import { Button, cn, IconButton, Menu, Spinner, StatusIcon } from "@mado/ui";
+import { ActionMenu, Button, cn, IconButton, Menu, Spinner, StatusIcon } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, Copy, Link2, Mail, MoreHorizontal, RotateCcw, Sparkles, Trash2, X } from "@mado/ui/fluent";
+import { ChevronLeft, Copy, Mail, MoreHorizontal, RotateCcw, Sparkles, Trash2, X } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -13,9 +13,19 @@ import { LinkedText } from "../agents/ConnectedAgents";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownView } from "../editor/MarkdownView";
 import { copyText } from "../settings/shared";
+import { deleteLead, useLeadActions } from "./leadActions";
 import { STAGE_ICON, useUpdateLead } from "./leadData";
 
 export const noOverlay = () => !document.querySelector('[role="dialog"], [role="menu"]');
+
+function LeadMenu({ lead, projectKey, onDeleted, onClose }: { lead: LeadSummary; projectKey: string; onDeleted: () => void; onClose?: () => void }) {
+  const entries = useLeadActions(lead, {
+    projectKey,
+    onDeleted,
+    extra: onClose ? [{ label: "Close", icon: <X />, kbd: "Esc", onSelect: onClose }] : [],
+  });
+  return <ActionMenu align="end" entries={entries} trigger={<IconButton label="More" size="sm" className="shrink-0"><MoreHorizontal /></IconButton>} />;
+}
 
 export function LeadDetail({
   id,
@@ -43,38 +53,12 @@ export function LeadDetail({
     }),
   );
   const update = useUpdateLead(projectId);
-  const listKey = orpc.crm.list.queryKey({ input: { projectId } });
-
-  const remove = useMutation({
-    mutationFn: () => client.crm.delete({ id }),
-    onMutate: () => {
-      const prev = queryClient.getQueryData<LeadSummary[]>(listKey);
-      if (prev) queryClient.setQueryData(listKey, prev.filter((l) => l.id !== id));
-      onDeleted();
-      return { prev };
-    },
-    onError: (e, _v, ctx) => {
-      queryClient.setQueryData(listKey, ctx?.prev);
-      toast.error(`Couldn't delete: ${errorMessage(e)}`);
-    },
-    onSuccess: () => {
-      const name = lead.data?.company.name ?? "Lead";
-      queryClient.invalidateQueries({ queryKey: orpc.trash.key() });
-      toast(`${name} moved to the trash`, {
-        action: {
-          label: "Undo",
-          run: () => client.trash.restore({ entityType: "lead", id }).then(() => queryClient.invalidateQueries({ queryKey: listKey })),
-        },
-      });
-    },
-  });
-
   const l = lead.data;
   useCommands(
     l
       ? [
           { id: "lead.close", title: "Close lead", keys: "Escape", group: "Leads", when: noOverlay, run: onClose },
-          { id: "lead.delete", title: `Delete ${l.company.name}`, group: "Leads", icon: <Trash2 />, run: () => remove.mutate() },
+          { id: "lead.delete", title: `Delete ${l.company.name}`, group: "Leads", icon: <Trash2 />, run: () => deleteLead(l, onDeleted) },
           ...LEAD_STAGES.map((s) => ({
             id: `lead.stage.${s}`,
             title: `Move to ${STAGE_LABEL[s]}`,
@@ -120,25 +104,7 @@ export function LeadDetail({
             ))}
           </Menu.Popup>
         </Menu.Root>
-        <Menu.Root>
-          <Menu.Trigger render={<IconButton label="More" size="sm" className="shrink-0" />}>
-            <MoreHorizontal />
-          </Menu.Trigger>
-          <Menu.Popup align="end">
-            <Menu.Item icon={<Link2 />} onClick={() => copyText(`${location.origin}/${ws.slug}/p/${projectKey}/leads?lead=${id}`, "Link copied")}>
-              Copy link
-            </Menu.Item>
-            {!fullscreen && (
-              <Menu.Item icon={<X />} kbd="Esc" onClick={onClose}>
-                Close
-              </Menu.Item>
-            )}
-            <Menu.Separator />
-            <Menu.Item icon={<Trash2 />} danger onClick={() => remove.mutate()}>
-              Delete lead
-            </Menu.Item>
-          </Menu.Popup>
-        </Menu.Root>
+        <LeadMenu lead={l} projectKey={projectKey} onDeleted={onDeleted} onClose={fullscreen ? undefined : onClose} />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-32 md:pb-8">

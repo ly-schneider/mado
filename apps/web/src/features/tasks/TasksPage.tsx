@@ -1,5 +1,5 @@
 import type { TaskStatus, TaskSummary } from "@mado/contract";
-import { Button, cn, EmptyState, Segmented, Spinner, StatusIcon } from "@mado/ui";
+import { Button, cn, ContextArea, EmptyState, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Plus } from "@mado/ui/fluent";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import { useProject, useWorkspace } from "../../lib/workspace";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
 import { ACTIVE_FIRST, groupByStatus, setDisplay, STATUS_LABEL, updateTask, useDisplay, useProjectTasks, noOverlay } from "./data";
 import { FilterBar, FilterMenu, hasFilters, type TaskFilters, useFilterPredicate } from "./FilterBar";
+import { newTaskEntries, TaskRowMenu } from "./actions";
 import { PickerHost, useTaskHotkeys } from "./pickers";
 import { GroupHeader, TaskCard, TaskRow, TaskRowPhone } from "./TaskBits";
 
@@ -140,9 +141,9 @@ export function TasksPage() {
         <>
           <div className="hidden min-h-0 flex-1 md:flex">
             {view === "board" ? (
-              <Board columns={columns} focusId={focusId} onOpen={open} onCreate={create} onFocus={setFocusId} />
+              <Board projectId={project.id} columns={columns} focusId={focusId} onOpen={open} onCreate={create} onFocus={setFocusId} />
             ) : (
-              <ListView columns={columns} focusId={focusId} onOpen={open} onCreate={create} onFocus={setFocusId} />
+              <ListView projectId={project.id} columns={columns} focusId={focusId} onOpen={open} onCreate={create} onFocus={setFocusId} />
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pb-36 md:hidden">
@@ -154,7 +155,9 @@ export function TasksPage() {
                 <section key={s}>
                   <GroupHeader status={s} count={list.length} className="bg-page px-4" />
                   {list.map((t) => (
-                    <TaskRowPhone key={t.id} task={t} onClick={() => open(t)} />
+                    <TaskRowMenu key={t.id} task={t} onOpen={() => open(t)}>
+                      <TaskRowPhone task={t} onClick={() => open(t)} />
+                    </TaskRowMenu>
                   ))}
                 </section>
               );
@@ -168,6 +171,7 @@ export function TasksPage() {
 }
 
 interface ViewProps {
+  projectId: string;
   columns: { status: TaskStatus; tasks: TaskSummary[] }[];
   focusId: string | null;
   onOpen: (t: TaskSummary) => void;
@@ -184,7 +188,7 @@ function sortOrderAt(list: TaskSummary[], index: number) {
   return 0;
 }
 
-function Board({ columns, focusId, onOpen, onCreate }: ViewProps) {
+function Board({ projectId, columns, focusId, onOpen, onCreate, onFocus }: ViewProps) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [drop, setDrop] = useState<{ status: TaskStatus; index: number } | null>(null);
   const colRefs = useRef(new Map<TaskStatus, HTMLDivElement>());
@@ -244,25 +248,27 @@ function Board({ columns, focusId, onOpen, onCreate }: ViewProps) {
               <span className="text-sm font-medium text-ink">{STATUS_LABEL[status]}</span>
               <span className="text-sm text-ink-subtle">{tasks.length}</span>
             </div>
-            <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-4 pt-2">
+            <ContextArea entries={newTaskEntries(projectId, status)} className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-4 pt-2">
               {tasks.map((t) => {
                 const visibleIndex = rest.indexOf(t);
                 return (
                   <div key={t.id} className="flex flex-col gap-2">
                     {drop?.status === status && drop.index === visibleIndex && t.id !== dragId && <DropLine />}
-                    <TaskCard
-                      task={t}
-                      focused={focusId === t.id}
-                      dragging={dragId === t.id}
-                      draggable
-                      onDragStart={(e) => {
-                        e.dataTransfer.effectAllowed = "move";
-                        e.dataTransfer.setData("text/plain", t.key);
-                        setDragId(t.id);
-                      }}
-                      onDragEnd={finish}
-                      onClick={() => onOpen(t)}
-                    />
+                    <TaskRowMenu task={t} onOpen={() => onOpen(t)} onFocus={() => onFocus(t.id)}>
+                      <TaskCard
+                        task={t}
+                        focused={focusId === t.id}
+                        dragging={dragId === t.id}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", t.key);
+                          setDragId(t.id);
+                        }}
+                        onDragEnd={finish}
+                        onClick={() => onOpen(t)}
+                      />
+                    </TaskRowMenu>
                   </div>
                 );
               })}
@@ -276,7 +282,7 @@ function Board({ columns, focusId, onOpen, onCreate }: ViewProps) {
                   No tasks
                 </button>
               )}
-            </div>
+            </ContextArea>
           </div>
         );
       })}
@@ -288,7 +294,7 @@ function DropLine() {
   return <div className="-my-[5px] h-0.5 rounded-full bg-accent" />;
 }
 
-function ListView({ columns, focusId, onOpen }: ViewProps) {
+function ListView({ projectId, columns, focusId, onOpen, onFocus }: ViewProps) {
   if (columns.length === 0) {
     return (
       <div className="flex-1">
@@ -297,15 +303,21 @@ function ListView({ columns, focusId, onOpen }: ViewProps) {
     );
   }
   return (
-    <div role="table" className="min-h-0 flex-1 overflow-y-auto pb-8">
-      {columns.map(({ status, tasks }) => (
-        <section key={status}>
-          <GroupHeader status={status} count={tasks.length} sticky />
-          {tasks.map((t) => (
-            <TaskRow key={t.id} task={t} focused={focusId === t.id} onClick={() => onOpen(t)} className={cn(focusId === t.id && "bg-state-selected")} />
-          ))}
-        </section>
-      ))}
-    </div>
+    <ContextArea entries={newTaskEntries(projectId, "todo")} className="min-h-0 flex-1 overflow-y-auto pb-8">
+      <div role="table">
+        {columns.map(({ status, tasks }) => (
+          <ContextArea key={status} entries={newTaskEntries(projectId, status)}>
+            <section>
+              <GroupHeader status={status} count={tasks.length} sticky />
+              {tasks.map((t) => (
+                <TaskRowMenu key={t.id} task={t} onOpen={() => onOpen(t)} onFocus={() => onFocus(t.id)}>
+                  <TaskRow task={t} focused={focusId === t.id} onClick={() => onOpen(t)} className={cn(focusId === t.id && "bg-state-selected")} />
+                </TaskRowMenu>
+              ))}
+            </section>
+          </ContextArea>
+        ))}
+      </div>
+    </ContextArea>
   );
 }

@@ -12,6 +12,7 @@ import { pushRecent } from "../../lib/ui";
 import { useWorkspace } from "../../lib/workspace";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
 import { ACTIVE_FIRST, branchName, copyText, groupByStatus, STATUS_LABEL, taskUrl, useIsPhone, noOverlay, docLabel } from "./data";
+import { TaskRowMenu } from "./actions";
 import { Description } from "./TaskDetailParts";
 import { applyToTask, PickerHost, PickerPopover, useTaskHotkeys } from "./pickers";
 import { AssigneeAvatar, GroupHeader, Pill, TaskRow, TaskRowPhone } from "./TaskBits";
@@ -114,7 +115,9 @@ export function MyTasksPage() {
                 <section key={g.status}>
                   <GroupHeader status={g.status} count={g.tasks.length} sticky />
                   {g.tasks.map((t) => (
-                    <TaskRow key={t.id} task={t} focused={selected?.id === t.id} onClick={() => select(t)} onOpen={() => open(t)} />
+                    <TaskRowMenu key={t.id} task={t} onOpen={() => open(t)} onFocus={() => select(t)}>
+                      <TaskRow task={t} focused={selected?.id === t.id} onClick={() => select(t)} onOpen={() => open(t)} />
+                    </TaskRowMenu>
                   ))}
                 </section>
               ))
@@ -276,7 +279,9 @@ function MyTasksPhone({
               <span className="text-ink-subtle">{g.tasks.length}</span>
             </div>
             {g.tasks.map((t) => (
-              <TaskRowPhone key={t.id} task={t} onClick={() => onOpen(t)} />
+              <TaskRowMenu key={t.id} task={t} onOpen={() => onOpen(t)}>
+                <TaskRowPhone task={t} onClick={() => onOpen(t)} />
+              </TaskRowMenu>
             ))}
           </section>
         ))

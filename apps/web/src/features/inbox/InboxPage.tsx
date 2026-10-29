@@ -1,9 +1,9 @@
 import type { Notification, TaskDetail } from "@mado/contract";
 import { PRIORITY_LABEL } from "@mado/contract";
-import { Avatar, Chips, cn, IconButton, PriorityIcon, Spinner, StatusIcon } from "@mado/ui";
+import { type ActionEntry, Avatar, Chips, cn, IconButton, PriorityIcon, Spinner, StatusIcon } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Archive, ArrowUpRight, FileText, Mail, MailOpen } from "@mado/ui/fluent";
+import { Archive, ArrowRight, ArrowUpRight, FileText, Mail, MailOpen } from "@mado/ui/fluent";
 import { useEffect, useMemo, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -12,6 +12,7 @@ import { toast } from "../../lib/toast";
 import { useWorkspace } from "../../lib/workspace";
 import { MarkdownView } from "../editor/MarkdownView";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
+import { RowMenu } from "../tasks/actions";
 import { STATUS_LABEL } from "../tasks/data";
 import { applyToTask, PickerHost, PickerPopover } from "../tasks/pickers";
 import { AssigneeAvatar, Pill } from "../tasks/TaskBits";
@@ -57,7 +58,22 @@ async function archive(list: Notification[]) {
   bumpUnread(-unread);
   try {
     await client.inbox.archive({ ids: list.map((n) => n.id) });
-    toast(list.length === 1 ? "Archived" : `Archived ${list.length}`);
+    toast(list.length === 1 ? "Archived" : `Archived ${list.length}`, { action: { label: "Undo", run: () => unarchive(list, false) } });
+  } catch (e) {
+    toast.error(errorMessage(e));
+  }
+  void queryClient.invalidateQueries({ queryKey: orpc.inbox.key() });
+}
+
+async function unarchive(list: Notification[], announce = true) {
+  if (!list.length) return;
+  patchInbox(
+    list.map((n) => n.id),
+    () => null,
+  );
+  try {
+    await client.inbox.archive({ ids: list.map((n) => n.id), archived: false });
+    if (announce) toast(list.length === 1 ? "Moved to inbox" : `Moved ${list.length} to inbox`);
   } catch (e) {
     toast.error(errorMessage(e));
   }
@@ -117,6 +133,20 @@ export function InboxPage() {
     void archive([selected]);
     navigate({ search: { n: next?.id }, replace: true });
   };
+  const archiveOne = (n: Notification) => {
+    if (n.id !== selected?.id) return void archive([n]);
+    archiveSelected();
+  };
+  const entriesFor = (n: Notification): ActionEntry[] => [
+    { label: "Open", icon: <ArrowRight />, kbd: "↵", onSelect: () => openEntity(n) },
+    { separator: true },
+    n.readAt
+      ? { label: "Mark as unread", icon: <Mail />, kbd: "U", onSelect: () => markRead([n], false) }
+      : { label: "Mark as read", icon: <MailOpen />, kbd: "U", onSelect: () => markRead([n], true) },
+    archived
+      ? { label: "Move to inbox", icon: <Archive />, kbd: "E", onSelect: () => unarchive([n]) }
+      : { label: "Archive", icon: <Archive />, kbd: "E", onSelect: () => archiveOne(n) },
+  ];
   const changeFilter = (f: Filter) => {
     setFilter(f);
     navigate({ search: {}, replace: true });
@@ -131,7 +161,14 @@ export function InboxPage() {
       { id: "list.down", title: "Move down", keys: "j, ArrowDown", hint: "J", group: "Navigation", run: () => move(1) },
       { id: "list.up", title: "Move up", keys: "k, ArrowUp", hint: "K", group: "Navigation", run: () => move(-1) },
       { id: "list.open", title: "Open", keys: "Enter", hint: "↵", group: "Navigation", run: () => selected && openEntity(selected) },
-      { id: "inbox.archive", title: "Archive notification", keys: "e", hint: "E", group: "Actions", run: archiveSelected, when: () => !archived },
+      {
+        id: "inbox.archive",
+        title: archived ? "Move notification to inbox" : "Archive notification",
+        keys: "e",
+        hint: "E",
+        group: "Actions",
+        run: () => (archived ? selected && unarchive([selected]) : archiveSelected()),
+      },
       { id: "inbox.unread", title: "Mark as unread", keys: "u", hint: "U", group: "Actions", run: () => selected && markRead([selected], !selected.readAt) },
       { id: "inbox.readAll", title: "Mark all as read", keys: "Shift+U", group: "Actions", run: () => markRead(items, true) },
       { id: "inbox.archiveRead", title: "Archive all read", group: "Actions", run: () => archive(items.filter((n) => n.readAt)), when: () => !archived },
@@ -179,16 +216,18 @@ export function InboxPage() {
                 <section key={g.label}>
                   <div className="flex h-8 items-end px-4 pb-1 text-label font-medium text-ink-subtle">{g.label}</div>
                   {g.list.map((n) => (
-                    <NotificationRow
-                      key={n.id}
-                      n={n}
-                      selected={n.id === selected?.id}
-                      onClick={() => {
-                        if (window.matchMedia("(max-width: 767px)").matches) openEntity(n);
-                        else select(n);
-                      }}
-                      onDoubleClick={() => openEntity(n)}
-                    />
+                    // Right-click focuses without marking read, so "Mark as read" stays on offer.
+                    <RowMenu key={n.id} entries={entriesFor(n)} onFocus={() => navigate({ search: { n: n.id }, replace: true })}>
+                      <NotificationRow
+                        n={n}
+                        selected={n.id === selected?.id}
+                        onClick={() => {
+                          if (window.matchMedia("(max-width: 767px)").matches) openEntity(n);
+                          else select(n);
+                        }}
+                        onDoubleClick={() => openEntity(n)}
+                      />
+                    </RowMenu>
                   ))}
                 </section>
               ))

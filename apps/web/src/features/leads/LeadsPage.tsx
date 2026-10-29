@@ -3,7 +3,7 @@ import { Avatar, Button, Checkbox, cn, Dialog, Field, IconButton, Input, Popover
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { ListFilter, Plus } from "@mado/ui/fluent";
-import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";
 import { shortDate } from "../../lib/time";
@@ -12,6 +12,8 @@ import { pushRecent } from "../../lib/ui";
 import { useProject, useWorkspace } from "../../lib/workspace";
 import { useIsPhone, useMedia } from "../settings/shared";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
+import { RowMenu } from "../tasks/actions";
+import { useLeadActions } from "./leadActions";
 import { LeadDetail } from "./LeadDetail";
 import { byLastContact, LIST_ORDER, STAGE_ICON, useUpdateLead } from "./leadData";
 
@@ -143,7 +145,7 @@ function Leads({ project }: { project: Project }) {
           ) : all.length === 0 ? (
             <p className="px-4 py-16 text-center text-sm text-ink-subtle">No leads yet.</p>
           ) : view === "list" ? (
-            <LeadList groups={groups} selected={selected} cursor={flat[cursor]?.id} onOpen={open} phone={phone} />
+            <LeadList groups={groups} selected={selected} cursor={flat[cursor]?.id} onOpen={open} onFocus={(l) => setCursor(flat.indexOf(l))} phone={phone} projectKey={project.key} />
           ) : (
             <Pipeline project={project} leads={visible} selected={selected} onOpen={open} />
           )}
@@ -188,6 +190,29 @@ function StageFilter({ hidden, onChange }: { hidden: LeadStage[]; onChange: (s: 
   );
 }
 
+function LeadRowMenu({
+  lead,
+  projectKey,
+  onOpen,
+  onFocus,
+  className,
+  children,
+}: {
+  lead: LeadSummary;
+  projectKey: string;
+  onOpen: () => void;
+  onFocus?: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  const entries = useLeadActions(lead, { projectKey, onOpen });
+  return (
+    <RowMenu entries={entries} onFocus={onFocus} className={className}>
+      {children}
+    </RowMenu>
+  );
+}
+
 function OwnerAvatar({ lead }: { lead: LeadSummary }) {
   return <Avatar type={lead.owner.type} initials={lead.owner.initials} size="sm" title={lead.owner.type === "agent" ? `${lead.owner.name} (agent)` : lead.owner.name} />;
 }
@@ -197,13 +222,17 @@ function LeadList({
   selected,
   cursor,
   onOpen,
+  onFocus,
   phone,
+  projectKey,
 }: {
   groups: { stage: LeadStage; items: LeadSummary[] }[];
   selected?: string;
   cursor?: string;
   onOpen: (l: LeadSummary) => void;
+  onFocus: (l: LeadSummary) => void;
   phone: boolean;
+  projectKey: string;
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto pb-32 md:pb-6">
@@ -215,34 +244,35 @@ function LeadList({
             <span className="text-sm text-ink-subtle">{g.items.length}</span>
           </div>
           {g.items.map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              data-lead={l.id}
-              onClick={() => onOpen(l)}
-              className={cn(
-                "flex w-full items-center gap-3 pl-4 pr-4 text-left outline-none md:pl-[18px]",
-                phone ? "h-14" : "h-10",
-                selected === l.id ? "bg-state-selected" : cursor === l.id ? "bg-state-hover" : "hover:bg-state-hover",
-                l.stage === "lost" && "opacity-60",
-              )}
-            >
-              {phone ? (
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-touch text-ink">{l.company.name}</span>
-                  <span className="block truncate text-label text-ink-subtle">
-                    {[l.contact?.name, l.lastContactAt && shortDate(l.lastContactAt)].filter(Boolean).join(" · ")}
+            <LeadRowMenu key={l.id} lead={l} projectKey={projectKey} onOpen={() => onOpen(l)} onFocus={() => onFocus(l)}>
+              <button
+                type="button"
+                data-lead={l.id}
+                onClick={() => onOpen(l)}
+                className={cn(
+                  "flex w-full items-center gap-3 pl-4 pr-4 text-left outline-none md:pl-[18px]",
+                  phone ? "h-14" : "h-10",
+                  selected === l.id ? "bg-state-selected" : cursor === l.id ? "bg-state-hover" : "hover:bg-state-hover",
+                  l.stage === "lost" && "opacity-60",
+                )}
+              >
+                {phone ? (
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-touch text-ink">{l.company.name}</span>
+                    <span className="block truncate text-label text-ink-subtle">
+                      {[l.contact?.name, l.lastContactAt && shortDate(l.lastContactAt)].filter(Boolean).join(" · ")}
+                    </span>
                   </span>
-                </span>
-              ) : (
-                <>
-                  <span className="min-w-0 shrink truncate text-sm font-medium text-ink">{l.company.name}</span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-ink-subtle">{l.contact?.name}</span>
-                  <span className="w-[52px] shrink-0 text-right text-sm text-ink-subtle">{l.lastContactAt ? shortDate(l.lastContactAt) : "—"}</span>
-                </>
-              )}
-              <OwnerAvatar lead={l} />
-            </button>
+                ) : (
+                  <>
+                    <span className="min-w-0 shrink truncate text-sm font-medium text-ink">{l.company.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink-subtle">{l.contact?.name}</span>
+                    <span className="w-[52px] shrink-0 text-right text-sm text-ink-subtle">{l.lastContactAt ? shortDate(l.lastContactAt) : "—"}</span>
+                  </>
+                )}
+                <OwnerAvatar lead={l} />
+              </button>
+            </LeadRowMenu>
           ))}
         </div>
       ))}
@@ -304,26 +334,27 @@ function Pipeline({
           </div>
           <div className="flex min-h-24 flex-1 flex-col gap-1.5 overflow-y-auto px-1 pb-3">
             {c.items.map((l) => (
-              <button
-                key={l.id}
-                type="button"
-                draggable
-                onDragStart={(e) => {
-                  dragging.current = l.id;
-                  e.dataTransfer.setData("text/plain", l.id);
-                  e.dataTransfer.effectAllowed = "move";
-                }}
-                onDragEnd={() => setOver(null)}
-                onClick={() => onOpen(l)}
-                className={cn(
-                  "flex flex-col gap-1 rounded-lg bg-raised px-3 py-2.5 text-left outline-none active:scale-[0.99]",
-                  selected === l.id && "bg-state-selected shadow-[inset_0_0_0_1px_var(--color-accent)]",
-                  l.stage === "lost" && "opacity-60",
-                )}
-              >
-                <span className="truncate text-sm font-medium text-ink">{l.company.name}</span>
-                {l.contact?.name && <span className="truncate text-label text-ink-subtle">{l.contact.name}</span>}
-              </button>
+              <LeadRowMenu key={l.id} lead={l} projectKey={project.key} onOpen={() => onOpen(l)} className="flex flex-col">
+                <button
+                  type="button"
+                  draggable
+                  onDragStart={(e) => {
+                    dragging.current = l.id;
+                    e.dataTransfer.setData("text/plain", l.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragEnd={() => setOver(null)}
+                  onClick={() => onOpen(l)}
+                  className={cn(
+                    "flex flex-col gap-1 rounded-lg bg-raised px-3 py-2.5 text-left outline-none active:scale-[0.99]",
+                    selected === l.id && "bg-state-selected shadow-[inset_0_0_0_1px_var(--color-accent)]",
+                    l.stage === "lost" && "opacity-60",
+                  )}
+                >
+                  <span className="truncate text-sm font-medium text-ink">{l.company.name}</span>
+                  {l.contact?.name && <span className="truncate text-label text-ink-subtle">{l.contact.name}</span>}
+                </button>
+              </LeadRowMenu>
             ))}
           </div>
         </div>

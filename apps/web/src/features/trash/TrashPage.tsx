@@ -1,5 +1,5 @@
 import { TRASH_RETENTION_DAYS, type TrashItem } from "@mado/contract";
-import { Avatar, Button, Checkbox, cn, IconButton, Spinner } from "@mado/ui";
+import { type ActionEntry, Avatar, Button, Checkbox, cn, IconButton, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Building2, CircleCheck, FileText, FolderKanban, Info, MessageSquare, RotateCcw, Tag, Trash2, X } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -12,6 +12,7 @@ import { useWorkspace } from "../../lib/workspace";
 import { SettingsNav } from "../settings/SettingsPage";
 import { ConfirmDialog, useIsPhone } from "../settings/shared";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
+import { RowMenu } from "../tasks/actions";
 
 const TYPE_ICON: Record<TrashItem["entityType"], ReactNode> = {
   task: <CircleCheck />,
@@ -131,6 +132,18 @@ export function TrashPage() {
   const current = items[cursor];
   const targets = () => (selectedItems.length ? selectedItems : current ? [current] : []);
 
+  /** A right-click inside the selection acts on the whole selection, like a file manager. */
+  const entriesFor = (i: TrashItem): ActionEntry[] => {
+    const list = selected.has(itemKey(i)) ? selectedItems : [i];
+    const n = list.length > 1 ? ` ${list.length} items` : "";
+    return [
+      { label: `Restore${n}`, icon: <RotateCcw />, kbd: "R", onSelect: () => restore.mutate(list) },
+      ...(owner
+        ? [{ separator: true as const }, { label: `Delete${n} forever`, icon: <Trash2 />, kbd: `${modKey}⌫`, danger: true, onSelect: () => setConfirm({ kind: "purge", items: list }) }]
+        : []),
+    ];
+  };
+
   useListNavigation(items, cursor, setCursor, toggle);
   useCommands(
     [
@@ -207,63 +220,64 @@ export function TrashPage() {
                 const k = itemKey(i);
                 const checked = selected.has(k);
                 return (
-                  <div
-                    key={k}
-                    role="row"
-                    onMouseMove={() => cursor !== idx && setCursor(idx)}
-                    onClick={() => phone || toggle(i)}
-                    className={cn(
-                      "group grid min-h-11 grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-3 border-b border-edge px-4 py-1.5 md:grid-cols-[16px_minmax(0,1fr)_160px_96px_96px_176px] md:px-5",
-                      checked ? "bg-state-selected" : cursor === idx && "bg-state-hover",
-                    )}
-                  >
-                    <Checkbox checked={checked} label={`Select ${i.title}`} onChange={() => toggle(i)} />
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span className="shrink-0 text-ink-subtle [&_svg]:size-4" title={TYPE_LABEL[i.entityType]}>
-                        {TYPE_ICON[i.entityType]}
-                      </span>
-                      <span className="min-w-0 md:flex md:items-baseline md:gap-2">
-                        <span className="block truncate text-sm text-ink">{i.title || "Untitled"}</span>
-                        <span className="block truncate text-label text-ink-subtle">
-                          {i.subtitle}
-                          <span className="md:hidden">
-                            {" · "}
-                            {i.deletedBy.name} · {ago(i.deletedAt)} · purged {purgeIn(i)}
+                  <RowMenu key={k} entries={entriesFor(i)} onFocus={() => setCursor(idx)}>
+                    <div
+                      role="row"
+                      onMouseMove={() => cursor !== idx && setCursor(idx)}
+                      onClick={() => phone || toggle(i)}
+                      className={cn(
+                        "group grid min-h-11 grid-cols-[16px_minmax(0,1fr)_auto] items-center gap-3 border-b border-edge px-4 py-1.5 md:grid-cols-[16px_minmax(0,1fr)_160px_96px_96px_176px] md:px-5",
+                        checked ? "bg-state-selected" : cursor === idx && "bg-state-hover",
+                      )}
+                    >
+                      <Checkbox checked={checked} label={`Select ${i.title}`} onChange={() => toggle(i)} />
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span className="shrink-0 text-ink-subtle [&_svg]:size-4" title={TYPE_LABEL[i.entityType]}>
+                          {TYPE_ICON[i.entityType]}
+                        </span>
+                        <span className="min-w-0 md:flex md:items-baseline md:gap-2">
+                          <span className="block truncate text-sm text-ink">{i.title || "Untitled"}</span>
+                          <span className="block truncate text-label text-ink-subtle">
+                            {i.subtitle}
+                            <span className="md:hidden">
+                              {" · "}
+                              {i.deletedBy.name} · {ago(i.deletedAt)} · purged {purgeIn(i)}
+                            </span>
                           </span>
                         </span>
                       </span>
-                    </span>
-                    <span className="hidden min-w-0 items-center gap-2 md:flex">
-                      <Avatar type={i.deletedBy.type} initials={i.deletedBy.initials} size="sm" />
-                      <span className="truncate text-label text-ink-muted">{i.deletedBy.name}</span>
-                    </span>
-                    <span className="hidden text-label text-ink-muted md:block">{ago(i.deletedAt, { long: true })}</span>
-                    <span className="hidden text-label text-ink-subtle md:block">{purgeIn(i)}</span>
-                    <span
-                      className={cn(
-                        "flex items-center justify-end gap-1",
-                        !phone && cursor !== idx && !checked && "opacity-0 group-focus-within:opacity-100",
-                      )}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {phone ? (
-                        <IconButton label={`Restore ${i.title}`} size="touch" onClick={() => restore.mutate([i])}>
-                          <RotateCcw />
-                        </IconButton>
-                      ) : (
-                        <>
-                          <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={() => restore.mutate([i])}>
-                            Restore
-                          </Button>
-                          {owner && (
-                            <Button size="sm" variant="ghost" className="text-danger hover:text-danger" onClick={() => setConfirm({ kind: "purge", items: [i] })}>
-                              Delete forever
+                      <span className="hidden min-w-0 items-center gap-2 md:flex">
+                        <Avatar type={i.deletedBy.type} initials={i.deletedBy.initials} size="sm" />
+                        <span className="truncate text-label text-ink-muted">{i.deletedBy.name}</span>
+                      </span>
+                      <span className="hidden text-label text-ink-muted md:block">{ago(i.deletedAt, { long: true })}</span>
+                      <span className="hidden text-label text-ink-subtle md:block">{purgeIn(i)}</span>
+                      <span
+                        className={cn(
+                          "flex items-center justify-end gap-1",
+                          !phone && cursor !== idx && !checked && "opacity-0 group-focus-within:opacity-100",
+                        )}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {phone ? (
+                          <IconButton label={`Restore ${i.title}`} size="touch" onClick={() => restore.mutate([i])}>
+                            <RotateCcw />
+                          </IconButton>
+                        ) : (
+                          <>
+                            <Button size="sm" variant="ghost" icon={<RotateCcw />} onClick={() => restore.mutate([i])}>
+                              Restore
                             </Button>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  </div>
+                            {owner && (
+                              <Button size="sm" variant="ghost" className="text-danger hover:text-danger" onClick={() => setConfirm({ kind: "purge", items: [i] })}>
+                                Delete forever
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </RowMenu>
                 );
               })}
             </div>

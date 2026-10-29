@@ -1,16 +1,17 @@
 import type { TaskDetail, TaskSummary, TaskType } from "@mado/contract";
 import { PRIORITY_LABEL } from "@mado/contract";
-import { cn, EmptyState, IconButton, Menu, PriorityIcon, Spinner, StatusIcon } from "@mado/ui";
+import { ActionMenu, cn, EmptyState, IconButton, PriorityIcon, Spinner, StatusIcon } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouter } from "@tanstack/react-router";
-import { ArrowUp, Bug, ChevronLeft, CircleCheck, Copy, Ellipsis, FileText, GitBranch, Link2, RotateCcw, Share, Trash2, Zap } from "@mado/ui/fluent";
+import { ArrowUp, Bug, Check, ChevronLeft, CircleCheck, Ellipsis, FileText, GitBranch, Link2, RotateCcw, Share, Zap } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { orpc } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
 import { pushRecent } from "../../lib/ui";
 import { useMe, useProjectForTaskKey, useWorkspace } from "../../lib/workspace";
 import { MobileNavTitle, PageHeader } from "../shell/PageHeader";
-import { ACTIVE_FIRST, branchName, copyText, deleteTask, findCachedTaskByKey, groupByStatus, shortSession, STATUS_LABEL, taskUrl, updateTask, useProjectTasks, noOverlay, docLabel } from "./data";
+import { ACTIVE_FIRST, branchName, copyText, findCachedTaskByKey, groupByStatus, shortSession, STATUS_LABEL, taskUrl, updateTask, useProjectTasks, noOverlay, docLabel } from "./data";
+import { useTaskActions } from "./actions";
 import { applyToTask, PickerHost, PickerPopover, useTaskHotkeys } from "./pickers";
 import { Activity, CommentCard, CommentComposer, Description, EditableTitle, Linked, postComment, RevertSessionDialog } from "./TaskDetailParts";
 import { AssigneeAvatar, Pill } from "./TaskBits";
@@ -222,60 +223,42 @@ function EpicChildren({ tasks }: { tasks: TaskSummary[] }) {
   );
 }
 
-function TaskMenu({ task, detail, onDeleted, trigger }: { task: TaskSummary; detail?: TaskDetail; onDeleted: () => void; trigger?: ReactNode }) {
-  const ws = useWorkspace();
+function TaskMenu({ task, detail, onDeleted, trigger }: { task: TaskSummary; detail?: TaskDetail; onDeleted: () => void; trigger?: React.ReactElement }) {
   const [revertOpen, setRevertOpen] = useState(false);
-  const convert = (type: TaskType) => updateTask(task, { type }, { type });
   const session = detail?.agentAccess?.sessionId;
+  const types: { type: TaskType; label: string; icon: ReactNode }[] = [
+    { type: "task", label: "Task", icon: <CircleCheck /> },
+    { type: "bug", label: "Bug", icon: <Bug /> },
+    { type: "epic", label: "Epic", icon: <Zap /> },
+  ];
+  const entries = useTaskActions(task, {
+    onDeleted,
+    extra: [
+      ...(session ? [{ label: `Revert agent session ${shortSession(session)}`, icon: <RotateCcw />, onSelect: () => setRevertOpen(true) }] : []),
+      {
+        label: "Convert to",
+        icon: task.type === "bug" ? <Bug /> : task.type === "epic" ? <Zap /> : <CircleCheck />,
+        children: types.map((t) => ({
+          label: t.label,
+          icon: t.type === task.type ? <Check /> : t.icon,
+          onSelect: () => t.type !== task.type && updateTask(task, { type: t.type }, { type: t.type }),
+        })),
+      },
+    ],
+  });
   return (
     <>
-      <Menu.Root>
-        <Menu.Trigger
-          aria-label="More"
-          className={cn(!trigger && "inline-flex size-7 items-center justify-center rounded-md text-ink-muted outline-none hover:bg-state-hover hover:text-ink data-[popup-open]:bg-state-active")}
-          render={trigger ? (trigger as React.ReactElement) : undefined}
-        >
-          {!trigger && <Ellipsis className="size-4" />}
-        </Menu.Trigger>
-        <Menu.Popup align="end" className="w-56">
-          <Menu.Item icon={<Copy />} onClick={() => copyText(task.key, "key")}>
-            Copy {task.key}
-          </Menu.Item>
-          <Menu.Item icon={<Link2 />} onClick={() => copyText(taskUrl(ws.slug, task.key), "link")}>
-            Copy link
-          </Menu.Item>
-          <Menu.Item icon={<GitBranch />} onClick={() => copyText(branchName(task.key, task.title), "branch name")}>
-            Copy branch name
-          </Menu.Item>
-          {session && (
-            <Menu.Item icon={<RotateCcw />} onClick={() => setRevertOpen(true)}>
-              Revert agent session {shortSession(session)}
-            </Menu.Item>
-          )}
-          <Menu.Separator />
-          <Menu.Label>Convert to</Menu.Label>
-          <Menu.Item icon={<CircleCheck />} selected={task.type === "task"} onClick={() => convert("task")}>
-            Task
-          </Menu.Item>
-          <Menu.Item icon={<Bug />} selected={task.type === "bug"} onClick={() => convert("bug")}>
-            Bug
-          </Menu.Item>
-          <Menu.Item icon={<Zap />} selected={task.type === "epic"} onClick={() => convert("epic")}>
-            Epic
-          </Menu.Item>
-          <Menu.Separator />
-          <Menu.Item
-            icon={<Trash2 />}
-            danger
-            kbd="⌫"
-            onClick={async () => {
-              if (await deleteTask(task)) onDeleted();
-            }}
-          >
-            Delete
-          </Menu.Item>
-        </Menu.Popup>
-      </Menu.Root>
+      <ActionMenu
+        align="end"
+        entries={entries}
+        trigger={
+          trigger ?? (
+            <button type="button" aria-label="More" className="inline-flex size-7 items-center justify-center rounded-md text-ink-muted outline-none hover:bg-state-hover hover:text-ink data-[popup-open]:bg-state-active">
+              <Ellipsis className="size-4" />
+            </button>
+          )
+        }
+      />
       {detail && <RevertSessionDialog task={detail} open={revertOpen} onOpenChange={setRevertOpen} />}
     </>
   );
