@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { client, orpc, queryClient } from "../../lib/orpc";
+import { openExternal } from "../../lib/external";
 import { toast } from "../../lib/toast";
 import { linkTitle } from "./markdown";
 
@@ -33,7 +34,7 @@ export function useLinkContext({ workspaceId, wsSlug, onOpenLink }: { workspaceI
   const open: OpenLink = (target, opts = {}) => {
     if (onOpenLink) return onOpenLink(target, opts);
     if (target.type === "url") {
-      window.open(target.href, "_blank", "noopener,noreferrer");
+      void openExternal(target.href);
       return;
     }
     if (!slug || !wsId) return;

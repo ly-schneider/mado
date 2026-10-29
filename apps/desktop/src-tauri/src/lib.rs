@@ -148,6 +148,7 @@ pub fn run() {
     let app = tauri::Builder::default()
         .manage(PendingLinks::default())
         .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, shortcut, event| {

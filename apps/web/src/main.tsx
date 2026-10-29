@@ -3,6 +3,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { preloadEditor } from "./features/editor/MarkdownEditor";
+import { routeExternalLinksInDesktop } from "./lib/external";
 import { persister, queryClient, shouldPersist } from "./lib/orpc";
 import { router } from "./router";
 import "./lib/theme";
@@ -32,3 +33,5 @@ document.addEventListener("contextmenu", (e) => {
   if (window.getSelection()?.toString()) return;
   e.preventDefault();
 });
+
+routeExternalLinksInDesktop();
