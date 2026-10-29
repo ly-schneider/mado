@@ -38,7 +38,7 @@ export function ServerSetup() {
   });
 
   return (
-    <AuthScreen title="Connect to your server" description="mado runs on your own server. Enter the address you open it at in the browser.">
+    <AuthScreen title="Connect to your server">
       <form
         className="flex flex-col gap-4"
         onSubmit={(e) => {
@@ -48,7 +48,7 @@ export function ServerSetup() {
           if (origin) connect.mutate(origin);
         }}
       >
-        <Field label="Server">
+        <Field label="Server URL">
           <Input
             autoFocus
             required
@@ -65,7 +65,7 @@ export function ServerSetup() {
           {invalid
             ? "That doesn't look like an address."
             : connect.isError
-              ? `Couldn't reach a mado server at ${normalizeServer(value)}. Check the address and that it allows the desktop app.`
+              ? `Couldn't reach mado at ${normalizeServer(value)}.`
               : null}
         </FormError>
         <Button type="submit" variant="primary" loading={connect.isPending} className="w-full">

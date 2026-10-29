@@ -2,7 +2,7 @@
 // Hashed /assets/* are immutable, so cache-first. Navigations are network-first with the cached
 // index.html as the offline fallback. API, MCP, OAuth and webhooks are never cached.
 
-const SHELL_CACHE = "mado-shell-v1";
+const SHELL_CACHE = "mado-shell-v2";
 const ASSET_CACHE = "mado-assets-v1";
 const MAX_ASSETS = 200;
 const NEVER = /^\/(rpc|mcp|oauth|webhooks|\.well-known|export)(\/|$)/;

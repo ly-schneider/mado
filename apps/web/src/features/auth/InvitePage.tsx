@@ -43,7 +43,7 @@ export function InvitePage() {
 
   if (preview.isError || !preview.data) {
     return (
-      <AuthScreen title="Invite not found" description="This link is wrong or was revoked. Ask whoever sent it for a new one.">
+      <AuthScreen title="Invite not found" description="Ask whoever sent it for a new link.">
         <Button className="w-full" size={phone ? "touch" : "md"} onClick={() => navigate({ to: "/" })}>
           Go to mado
         </Button>
@@ -56,13 +56,13 @@ export function InvitePage() {
   const title = `Join ${inv.workspaceName}`;
   const description = (
     <>
-      <span className="font-medium text-ink-muted">{inv.invitedBy}</span> invited you to <span className="font-medium text-ink-muted">{inv.workspaceName}</span> as {role}.
+      <span className="font-medium text-ink-muted">{inv.invitedBy}</span> invited you as {role}.
     </>
   );
 
   if (inv.expired) {
     return (
-      <AuthScreen title="This invite has expired" description={<>Ask {inv.invitedBy} to send a new link to {inv.workspaceName}.</>}>
+      <AuthScreen title="This invite has expired" description={`Ask ${inv.invitedBy} for a new link.`}>
         <Button className="w-full" size={phone ? "touch" : "md"} onClick={() => navigate({ to: "/" })}>
           Go to mado
         </Button>
@@ -74,18 +74,20 @@ export function InvitePage() {
     const user = me.data;
     return (
       <AuthScreen title={title} description={description}>
-        <div className="flex items-center gap-3 rounded-lg border border-edge bg-panel px-3 py-2.5">
-          <Avatar type="user" initials={user.initials} size="lg" />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-ink">{user.name}</div>
-            <div className="truncate text-label text-ink-subtle">{user.email}</div>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 rounded-lg border border-edge bg-panel px-3 py-2.5">
+            <Avatar type="user" initials={user.initials} size="lg" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-ink">{user.name}</div>
+              <div className="truncate text-label text-ink-subtle">{user.email}</div>
+            </div>
           </div>
+          <FormError>{accept.error ? errorMessage(accept.error) : null}</FormError>
+          <Button variant="primary" size={phone ? "touch" : "md"} className="w-full" loading={accept.isPending} autoFocus onClick={() => accept.mutate({ token })}>
+            Accept invite
+          </Button>
         </div>
-        <FormError>{accept.error ? errorMessage(accept.error) : null}</FormError>
-        <Button variant="primary" size={phone ? "touch" : "md"} className="w-full" loading={accept.isPending} autoFocus onClick={() => accept.mutate({ token })}>
-          Accept invite
-        </Button>
-        <p className="text-center text-label text-ink-subtle">
+        <p className="text-center text-sm text-ink-subtle">
           Not {user.name.split(" ")[0]}?{" "}
           <button
             type="button"

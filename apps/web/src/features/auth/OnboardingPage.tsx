@@ -83,7 +83,7 @@ export function OnboardingPage() {
 
   const canSubmit = workspace.trim() && project.trim() && (keyState === "free" || keyState === "unknown");
   return (
-    <AuthScreen title="Create your workspace" description="Projects, their wiki, tasks and leads live here.">
+    <AuthScreen title="Create your workspace">
       <form
         className="flex flex-col gap-4"
         onSubmit={(e) => {
@@ -95,7 +95,6 @@ export function OnboardingPage() {
         <Field label="Workspace name">
           <Input autoFocus required placeholder="Acme" touch={phone} value={workspace} onChange={(e) => setWorkspace(e.target.value)} />
         </Field>
-        <div className="h-px bg-edge" />
         <Field label="First project">
           <Input
             required
@@ -123,7 +122,7 @@ export function OnboardingPage() {
               }}
             />
           </Field>
-          <KeyStatus state={keyState} />
+          {keyState !== "empty" && <KeyStatus state={keyState} />}
         </div>
         <FormError>{create.error ? errorMessage(create.error) : null}</FormError>
         <Button type="submit" variant="primary" size={phone ? "touch" : "md"} disabled={!canSubmit} loading={create.isPending} className="w-full">
