@@ -1,0 +1,27 @@
+{
+  "name": "mado",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.11",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:generate": "bun --cwd packages/db run generate",
+    "db:migrate": "bun --cwd packages/db run migrate",
+    "db:seed": "bun run --cwd packages/db seed",
+    "db:seed:reset": "bun run --cwd packages/db seed:reset",
+    "db:up": "docker compose -f ops/docker-compose.dev.yml up -d"
+  },
+  "devDependencies": {
+    "turbo": "^2.11.10",
+    "typescript": "~5.9.3",
+    "@types/bun": "latest"
+  }
+}

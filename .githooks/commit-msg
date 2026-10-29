@@ -1,0 +1,20 @@
+#!/bin/sh
+# Enforces Conventional Commits on the subject line: type(scope)!: summary
+subject=$(grep -v '^#' "$1" | head -n 1)
+
+case "$subject" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *) exit 0 ;;
+esac
+
+pattern='^(feat|fix|chore|docs|style|refactor|test|perf|build|ci|revert)(\([a-z0-9._/-]+\))?!?: .+'
+if ! printf '%s' "$subject" | grep -Eq "$pattern"; then
+  echo "commit-msg: subject must follow Conventional Commits, e.g. \"feat(web): add status filter\"" >&2
+  echo "  types: feat fix chore docs style refactor test perf build ci revert" >&2
+  echo "  got:   $subject" >&2
+  exit 1
+fi
+
+if [ "${#subject}" -gt 72 ]; then
+  echo "commit-msg: keep the subject at 72 characters or less (got ${#subject})" >&2
+  exit 1
+fi
