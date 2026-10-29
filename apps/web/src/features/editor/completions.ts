@@ -1,4 +1,4 @@
-import { type Completion, type CompletionContext, type CompletionResult, type CompletionSource, startCompletion } from "@codemirror/autocomplete";
+import { type Completion, type CompletionContext, type CompletionResult, type CompletionSource, snippet, startCompletion } from "@codemirror/autocomplete";
 import { syntaxTree } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
@@ -98,6 +98,14 @@ export function slashSource(opts: { sections: boolean; getProjects: () => Projec
     { label: "Code block", detail: "```", icon: "code", section: "Insert", apply: insert("```\n\n```", 4) },
     { label: "Divider", detail: "---", icon: "divider", section: "Insert", apply: insert("---\n") },
     { label: "Table", icon: "table", section: "Insert", apply: insert("| Column | Column |\n| --- | --- |\n|  |  |\n", 2) },
+    {
+      label: "Link",
+      detail: "web",
+      icon: "link",
+      section: "Insert",
+      // Tab stops: type the label, Tab, paste the URL.
+      apply: (view, from, to) => snippet("[${text}](${https://})")(view, null, from, to),
+    },
     { label: "Link page", detail: "[[", icon: "file", section: "Insert", apply: insert("[[", 2, (v) => startCompletion(v)) },
     {
       label: "Link task",

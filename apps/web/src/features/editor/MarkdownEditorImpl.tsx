@@ -43,6 +43,21 @@ export interface MarkdownEditorProps {
 
 const external = Annotation.define<boolean>();
 
+/** Pasting a URL while text is selected turns the selection into a Markdown link, as in Notion. */
+const pasteLinkOverSelection = EditorView.domEventHandlers({
+  paste(event, view) {
+    const url = event.clipboardData?.getData("text/plain").trim() ?? "";
+    const sel = view.state.selection.main;
+    if (sel.empty || view.state.readOnly || !/^https?:\/\/\S+$/.test(url)) return false;
+    const label = view.state.sliceDoc(sel.from, sel.to);
+    if (label.includes("\n")) return false;
+    event.preventDefault();
+    const insert = `[${label}](${url})`;
+    view.dispatch({ changes: { from: sel.from, to: sel.to, insert }, selection: { anchor: sel.from + insert.length }, userEvent: "input.paste" });
+    return true;
+  },
+});
+
 function toggleWrap(marker: string) {
   return (view: EditorView) => {
     if (view.state.readOnly) return false;
@@ -95,8 +110,9 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
       doc: value,
       extensions: [
         history(),
-        markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }),
+        markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false, pasteURLAsLink: false }),
         EditorView.lineWrapping,
+        pasteLinkOverSelection,
         EditorView.contentAttributes.of({ spellcheck: "true", autocapitalize: "sentences", "aria-label": placeholder ?? "Markdown editor" }),
         placeholder ? placeholderExt(placeholder) : [],
         editable.of([EditorState.readOnly.of(readOnly), EditorView.editable.of(!readOnly)]),
