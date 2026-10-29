@@ -212,9 +212,18 @@ function build(view: EditorView): DecorationSet {
           return;
         }
         switch (name) {
-          case "HeaderMark":
-            if (node.node.parent?.name.startsWith("ATXHeading")) mark("cm-md-mark", node.from, node.to);
+          case "HeaderMark": {
+            if (!node.node.parent?.name.startsWith("ATXHeading")) return;
+            if (lineActive(node.from)) {
+              mark("cm-md-mark", node.from, node.to);
+              return;
+            }
+            // Closing marks ("## Title ##") have the space before them; opening marks after.
+            const opening = node.from === doc.lineAt(node.from).from;
+            if (opening) hide(node.from, node.to + (state.sliceDoc(node.to, node.to + 1) === " " ? 1 : 0));
+            else hide(node.from - (state.sliceDoc(node.from - 1, node.from) === " " ? 1 : 0), node.to);
             return;
+          }
           case "Emphasis":
             mark("cm-em", node.from, node.to);
             return;
