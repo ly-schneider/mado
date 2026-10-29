@@ -1,12 +1,10 @@
 import { type AgentGrant, type AgentSession, type AuditEntry, type ExpiryOption, expiryToDate, type GrantLevel, TASK_KEY_RE } from "@mado/contract";
-import { Avatar, Badge, Button, cn, Dialog, EmptyState, IconButton, Menu, Spinner } from "@mado/ui";
+import { Avatar, Badge, Button, cn, Dialog, Field, IconButton, Menu, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import {
   ArrowRight,
-  Bot,
   ChevronDown,
-  ChevronLeft,
   MessageSquare,
   Pencil,
   Plus,
@@ -40,10 +38,6 @@ import {
 } from "./GrantPicker";
 
 const DAY = 86_400_000;
-
-export function grantShortId(id: string) {
-  return id.startsWith("g_") ? id : `g_${id.replace(/-/g, "").slice(0, 4)}`;
-}
 
 function sessionShortId(id: string) {
   return id.replace(/^s(ession)?_/, "").replace(/-/g, "").slice(0, 4);
@@ -127,11 +121,17 @@ export function ConnectedAgents({ openToken }: { openToken?: boolean }) {
       {showList && (
         <div className="min-w-0 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-4 px-4 pb-32 pt-2 md:px-6 md:pb-10 md:pt-7">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <h1 className="min-w-0 flex-1 text-title text-ink">Connected agents</h1>
-              <Button icon={<Plus />} onClick={() => setTokenOpen(true)} className="self-start sm:self-auto">
-                Personal access token
-              </Button>
+            <div className="flex min-h-9 items-center gap-3">
+              <h1 className="min-w-0 flex-1 truncate text-display text-ink md:text-title">{phone ? "Agents" : "Connected agents"}</h1>
+              {phone ? (
+                <IconButton label="Personal access token" variant="secondary" size="touch" className="rounded-full" onClick={() => setTokenOpen(true)}>
+                  <Plus />
+                </IconButton>
+              ) : (
+                <Button icon={<Plus />} onClick={() => setTokenOpen(true)}>
+                  Personal access token
+                </Button>
+              )}
             </div>
 
             {list.isPending ? (
@@ -139,16 +139,9 @@ export function ConnectedAgents({ openToken }: { openToken?: boolean }) {
                 <Spinner />
               </div>
             ) : list.isError ? (
-              <EmptyState icon={<Bot />} title="Couldn't load agents">
-                {errorMessage(list.error)}
-              </EmptyState>
+              <p className="py-2 text-sm text-ink-subtle">{errorMessage(list.error)}</p>
             ) : grants.length === 0 ? (
-              <div className="rounded-lg border border-edge">
-                <EmptyState icon={<Bot />} title="No agents connected yet">
-                  Add mado to Claude Code with <span className="font-medium text-ink-muted">claude mcp add --transport http mado &lt;server&gt;/mcp</span>, or
-                  create a personal access token.
-                </EmptyState>
-              </div>
+              <p className="py-2 text-sm text-ink-subtle">No agents connected.</p>
             ) : (
               <div className="overflow-hidden rounded-lg border border-edge" role="table">
                 <div
@@ -267,17 +260,10 @@ function AgentDetail({ grantId, onClose }: { grantId: string; onClose: () => voi
       ) : (
         <>
           <div className="flex items-start gap-3 border-b border-edge px-5 py-4">
-            {phone && (
-              <IconButton label="Back" size="touch" variant="secondary" className="-ml-1 rounded-full" onClick={onClose}>
-                <ChevronLeft className="size-[18px]" />
-              </IconButton>
-            )}
             <Avatar type="agent" size="lg" />
             <div className="min-w-0 flex-1">
               <div className="truncate text-base font-semibold text-ink">{g.agentName}</div>
-              <div className="truncate text-label text-ink-subtle">
-                Connected {shortDate(g.createdAt)} · grant {grantShortId(g.id)}
-              </div>
+              <div className="truncate text-label text-ink-subtle">Connected {shortDate(g.createdAt)}</div>
             </div>
             {!phone && (
               <IconButton label="Close (Esc)" size="sm" onClick={onClose}>
@@ -583,15 +569,13 @@ function TokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
     <Dialog open={open} onOpenChange={close} title="Personal access token" className="max-w-[600px]">
       {created ? (
         <div className="flex flex-col gap-4 p-5">
-          <div>
-            <h2 className="text-base font-semibold text-ink">Token for {created.name}</h2>
-            <p className="mt-1 text-sm text-ink-muted">Copy it now. It is shown only once; mado stores a hash.</p>
-          </div>
-          <CopyField value={created.token} label="Copy token" />
-          <div className="flex flex-col gap-1.5">
-            <span className="text-label font-medium text-ink">Add to Claude Code</span>
+          <h2 className="text-base font-semibold text-ink">Token for {created.name}</h2>
+          <Field label="Token" hint="shown only once">
+            <CopyField value={created.token} label="Copy token" />
+          </Field>
+          <Field label="Add to Claude Code">
             <CopyField multiline label="Copy command" value={`claude mcp add --transport http mado ${mcpUrl} --header "Authorization: Bearer ${created.token}"`} />
-          </div>
+          </Field>
           <div className="flex justify-end">
             <Button variant="primary" onClick={() => close(false)}>
               Done
@@ -607,10 +591,7 @@ function TokenDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: 
           }}
         >
           <div className="flex min-h-0 flex-col gap-5 overflow-y-auto p-5">
-            <div>
-              <h2 className="text-base font-semibold text-ink">Personal access token</h2>
-              <p className="mt-1 text-sm text-ink-muted">For agents that can't do OAuth. Same grant as a connected agent: you can change or revoke it later.</p>
-            </div>
+            <h2 className="text-base font-semibold text-ink">Personal access token</h2>
             <AgentNameField autoFocus value={draft.agentName} onChange={(agentName) => setDraft({ ...draft, agentName })} />
             <ProjectLevelTable projects={projects} draft={draft} onChange={setDraft} />
             <ExpiryBlock value={draft.expiry} onChange={(expiry) => setDraft({ ...draft, expiry })} />

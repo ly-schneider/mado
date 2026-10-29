@@ -1,16 +1,16 @@
 import { cn } from "@mado/ui";
-import { Link, Navigate, useNavigate } from "@tanstack/react-router";
+import { Link, Navigate, useNavigate, useSearch } from "@tanstack/react-router";
 import { Bot, Brain, Building2, ChevronRight, FolderKanban, History, Link2, Monitor, Palette, Trash2, User, Users } from "@mado/ui/fluent";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { isTauri } from "../../lib/platform";
 import { useCommands } from "../../lib/shortcuts";
 import { useWorkspace } from "../../lib/workspace";
 import { ConnectedAgents } from "../agents/ConnectedAgents";
-import { MobileTitle, PageHeader } from "../shell/PageHeader";
+import { type Crumb, PageHeader } from "../shell/PageHeader";
 import { AccountSection, AppearanceSection, DesktopSection } from "./AccountSections";
 import { AiSection } from "./AiSection";
 import { ProjectsSection } from "./ProjectsSection";
-import { useIsPhone } from "./shared";
+import { TitleSlotProvider, useIsPhone } from "./shared";
 import { AuditSection, MembersSection, SharingSection, WorkspaceSection } from "./WorkspaceSections";
 
 export type SettingsSection =
@@ -31,7 +31,6 @@ interface SectionMeta {
   /** "trash" is its own route, listed here because the sidebar no longer links it. */
   id: Exclude<SettingsSection, "menu" | "tokens"> | "trash";
   title: string;
-  description: string;
   icon: ReactNode;
 }
 
@@ -39,27 +38,27 @@ const GROUPS: { label: string; items: SectionMeta[] }[] = [
   {
     label: "You",
     items: [
-      { id: "account", title: "Account", description: "Your name, email and password.", icon: <User /> },
-      { id: "appearance", title: "Appearance", description: "Theme and accent for this device and your account.", icon: <Palette /> },
-      { id: "desktop", title: "Desktop app", description: "Server and shortcuts of the desktop app.", icon: <Monitor /> },
+      { id: "account", title: "Account", icon: <User /> },
+      { id: "appearance", title: "Appearance", icon: <Palette /> },
+      { id: "desktop", title: "Desktop app", icon: <Monitor /> },
     ],
   },
   {
     label: "Workspace",
     items: [
-      { id: "workspace", title: "Workspace", description: "Name and ownership of this workspace.", icon: <Building2 /> },
-      { id: "members", title: "Members", description: "People in this workspace and pending invites.", icon: <Users /> },
-      { id: "projects", title: "Projects", description: "Keys, labels and Git repositories per project.", icon: <FolderKanban /> },
-      { id: "sharing", title: "Share links", description: "Every guest link to a wiki page in this workspace.", icon: <Link2 /> },
-      { id: "audit", title: "Audit log", description: "Every write in this workspace, by people and agents.", icon: <History /> },
-      { id: "trash", title: "Trash", description: "", icon: <Trash2 /> },
+      { id: "workspace", title: "Workspace", icon: <Building2 /> },
+      { id: "members", title: "Members", icon: <Users /> },
+      { id: "projects", title: "Projects", icon: <FolderKanban /> },
+      { id: "sharing", title: "Share links", icon: <Link2 /> },
+      { id: "audit", title: "Audit log", icon: <History /> },
+      { id: "trash", title: "Trash", icon: <Trash2 /> },
     ],
   },
   {
     label: "Agents",
     items: [
-      { id: "agents", title: "Connected agents", description: "", icon: <Bot /> },
-      { id: "ai", title: "AI", description: "The built-in assistant runs on your own OpenRouter key.", icon: <Brain /> },
+      { id: "agents", title: "Connected agents", icon: <Bot /> },
+      { id: "ai", title: "AI", icon: <Brain /> },
     ],
   },
 ];
@@ -98,12 +97,13 @@ export function SettingsPage({ section }: { section: SettingsSection }) {
   }
   if (!meta) return <Navigate to="/$ws/settings/$section" params={{ ws: ws.slug, section: "account" }} replace />;
 
-  const crumbs = [{ label: "Settings", to: "/$ws/settings/$section", params: { ws: ws.slug, section: phone ? "menu" : "account" } }, { label: meta.title }];
+  const settingsCrumb: Crumb = { label: "Settings", to: "/$ws/settings/$section", params: { ws: ws.slug, section: phone ? "menu" : "account" } };
+  const crumbs: Crumb[] = [settingsCrumb, { label: meta.title }];
 
   if (meta.id === "agents") {
     return (
       <>
-        <PageHeader crumbs={crumbs} mobileBack />
+        <PageHeader crumbs={crumbs} mobileBack mobileActions={null} />
         <div className="flex min-h-0 flex-1">
           <SettingsNav current={meta.id} className="2xl:flex" />
           <ConnectedAgents openToken={section === "tokens"} />
@@ -112,19 +112,32 @@ export function SettingsPage({ section }: { section: SettingsSection }) {
     );
   }
 
+  return <SectionScreen meta={meta} crumbs={crumbs} />;
+}
+
+function SectionScreen({ meta, crumbs }: { meta: SectionPage; crumbs: Crumb[] }) {
+  const ws = useWorkspace();
+  const { id } = useSearch({ strict: false }) as { id?: string };
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  // A project's own page: Projects › Name, titled by the project. Breadcrumbs stay two levels deep.
+  const project = meta.id === "projects" && id ? ws.projects.find((p) => p.id === id) : undefined;
+  const title = project?.name ?? meta.title;
+  const trail = project ? [{ label: "Projects", to: "/$ws/settings/$section", params: { ws: ws.slug, section: "projects" }, search: {} }, { label: project.name }] : crumbs;
+
   return (
     <>
-      <PageHeader crumbs={crumbs} mobileBack />
+      <PageHeader crumbs={trail} mobileBack mobileActions={null} />
       <div className="flex min-h-0 flex-1">
         <SettingsNav current={meta.id} className="lg:flex" />
         <div className="min-w-0 flex-1 overflow-y-auto">
-          <MobileTitle title={meta.title} subtitle={meta.description} />
-          <div className="mx-auto flex max-w-[720px] flex-col gap-8 px-4 pb-32 md:px-8 md:pb-16 md:pt-8">
-            <div className="hidden md:block">
-              <h1 className="text-title text-ink">{meta.title}</h1>
-              <p className="mt-1 text-sm text-ink-muted">{meta.description}</p>
+          <div className="mx-auto flex max-w-[720px] flex-col gap-8 px-4 pb-32 pt-2 md:px-8 md:pb-16 md:pt-8">
+            <div className="flex min-h-9 items-center gap-3">
+              <h1 className="min-w-0 flex-1 truncate text-display text-ink md:text-title">{title}</h1>
+              <div ref={setSlot} className="flex shrink-0 items-center gap-2 empty:hidden" />
             </div>
-            <SectionBody id={meta.id} />
+            <TitleSlotProvider value={slot}>
+              <SectionBody id={meta.id} />
+            </TitleSlotProvider>
           </div>
         </div>
       </div>
@@ -192,9 +205,9 @@ function PhoneMenu() {
   const ws = useWorkspace();
   return (
     <>
-      <PageHeader crumbs={[{ label: ws.name }, { label: "Settings" }]} mobileBack />
+      <PageHeader crumbs={[{ label: ws.name }, { label: "Settings" }]} mobileBack mobileActions={null} />
       <div className="min-h-0 flex-1 overflow-y-auto pb-32">
-        <MobileTitle title="Settings" subtitle={ws.name} />
+        <h1 className="px-4 pb-4 pt-2 text-display text-ink">Settings</h1>
         <div className="flex flex-col gap-6 px-4">
           {GROUPS.map((g) => {
             const items = g.items.filter(visible);

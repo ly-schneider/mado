@@ -110,8 +110,7 @@ function Consent({ requestId }: { requestId: string }) {
         <div className="flex flex-col gap-1.5">
           <h1 className="text-title text-ink">{c.client.name} wants to connect to mado</h1>
           <p className="text-sm text-ink-muted">
-            Signed in as <span className="font-medium text-ink">{c.user.name}</span> ({role}). The agent gets exactly what you tick below — never more than
-            your own rights. Every action is logged under its name.
+            Signed in as <span className="font-medium text-ink">{c.user.name}</span> · {role}
           </p>
         </div>
 

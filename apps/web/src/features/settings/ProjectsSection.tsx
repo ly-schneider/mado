@@ -1,8 +1,8 @@
 import { type Label, LABEL_COLORS, type LabelColor, type Project, type Repo, type Workspace } from "@mado/contract";
-import { Button, Card, CardRow, Dialog, EmptyState, Field, IconButton, Input, Select, Spinner, Textarea } from "@mado/ui";
+import { Button, Card, cn, Dialog, Field, IconButton, Input, Select, Spinner, Textarea } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, FolderKanban, GitBranch, Plus, Trash2 } from "@mado/ui/fluent";
+import { ChevronRight, GitBranch, Plus, Trash2 } from "@mado/ui/fluent";
 import { useEffect, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -10,7 +10,7 @@ import { ago } from "../../lib/time";
 import { toast } from "../../lib/toast";
 import { useWorkspace } from "../../lib/workspace";
 import { KeyStatus, suggestKey, useKeyCheck } from "../auth/OnboardingPage";
-import { ConfirmDialog, CopyField, InlineInput, SettingsGroup } from "./shared";
+import { ConfirmDialog, CopyField, EmptyLine, InlineInput, SettingsGroup, SettingsRow, TitleAction, touchInput } from "./shared";
 
 export function ProjectsSection() {
   const ws = useWorkspace();
@@ -22,43 +22,33 @@ export function ProjectsSection() {
   if (project) return <ProjectDetail key={project.id} project={project} />;
   return (
     <>
-      <SettingsGroup
-        title="Projects"
-        description="Each project has its own tasks, wiki and leads."
-        action={
-          ws.role === "owner" && (
-            <Button icon={<Plus />} onClick={() => setCreating(true)}>
-              New project
-            </Button>
-          )
-        }
-      >
-        {ws.projects.length === 0 ? (
-          <div className="rounded-lg border border-edge">
-            <EmptyState icon={<FolderKanban />} title="No projects yet" />
-          </div>
-        ) : (
-          <Card>
-            {ws.projects.map((p) => (
-              <Link
-                key={p.id}
-                to="/$ws/settings/$section"
-                params={{ ws: ws.slug, section: "projects" }}
-                search={{ id: p.id }}
-                className="flex min-h-14 items-center gap-3 px-4 py-2.5 outline-none hover:bg-state-hover"
-              >
-                <span className="w-12 shrink-0 text-label font-medium text-ink-subtle">{p.key}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-ink">{p.name}</span>
-                  {p.description && <span className="block truncate text-label text-ink-subtle">{p.description}</span>}
-                </span>
-                <span className="text-label text-ink-subtle">{p.openTaskCount} open</span>
-                <ChevronRight className="size-4 text-ink-faint" />
-              </Link>
-            ))}
-          </Card>
-        )}
-      </SettingsGroup>
+      {ws.role === "owner" && (
+        <TitleAction>
+          <Button variant="primary" icon={<Plus />} onClick={() => setCreating(true)}>
+            New project
+          </Button>
+        </TitleAction>
+      )}
+      {ws.projects.length === 0 ? (
+        <EmptyLine>No projects yet.</EmptyLine>
+      ) : (
+        <Card>
+          {ws.projects.map((p) => (
+            <Link
+              key={p.id}
+              to="/$ws/settings/$section"
+              params={{ ws: ws.slug, section: "projects" }}
+              search={{ id: p.id }}
+              className="flex min-h-12 items-center gap-3 px-4 py-2 outline-none hover:bg-state-hover active:bg-state-active"
+            >
+              <span className="w-12 shrink-0 text-label font-medium text-ink-subtle">{p.key}</span>
+              <span className="min-w-0 flex-1 truncate text-sm text-ink">{p.name}</span>
+              <span className="shrink-0 text-label text-ink-subtle">{p.openTaskCount} open</span>
+              <ChevronRight className="size-4 shrink-0 text-ink-faint" />
+            </Link>
+          ))}
+        </Card>
+      )}
       <NewProjectDialog open={creating} onOpenChange={setCreating} />
     </>
   );
@@ -170,29 +160,21 @@ function ProjectDetail({ project }: { project: Project }) {
 
   return (
     <>
-      <Link
-        to="/$ws/settings/$section"
-        params={{ ws: ws.slug, section: "projects" }}
-        search={{}}
-        className="-mb-4 -mt-2 flex items-center gap-1 self-start text-label text-ink-subtle hover:text-ink"
-      >
-        <ChevronLeft className="size-4" />
-        All projects
-      </Link>
-      <SettingsGroup title={project.name}>
+      <SettingsGroup>
         <Card>
-          <CardRow title="Name">
-            <InlineInput label="Project name" className="w-56" value={project.name} disabled={!owner} onSave={(name) => update.mutate({ name })} />
-          </CardRow>
-          <CardRow title="Key" description="Task IDs are never reused, so the key is fixed. Agents and commits refer to it.">
+          <SettingsRow label="Name" stack>
+            <InlineInput label="Project name" className="sm:w-64" value={project.name} disabled={!owner} onSave={(name) => update.mutate({ name })} />
+          </SettingsRow>
+          <SettingsRow label="Key" description="Fixed, because task IDs are never reused.">
             <span className="text-sm font-medium text-ink">{project.key}</span>
-          </CardRow>
+          </SettingsRow>
           <div className="flex flex-col gap-2 px-4 py-3">
-            <span className="text-sm font-medium text-ink">Description</span>
+            <span className="text-sm text-ink">Description</span>
             <Textarea
               rows={3}
               value={description}
               disabled={!owner}
+              className="max-md:text-touch"
               placeholder="What this project is about. Agents read it first."
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() => description !== project.description && update.mutate({ description }, { onSuccess: () => toast("Description saved") })}
@@ -205,11 +187,11 @@ function ProjectDetail({ project }: { project: Project }) {
       {owner && (
         <SettingsGroup title="Danger zone">
           <Card>
-            <CardRow title="Delete project" description="Its tasks, pages and leads go to the trash for 30 days. The key stays reserved.">
+            <SettingsRow label="Delete project">
               <Button variant="danger" icon={<Trash2 />} onClick={() => setDeleting(true)}>
                 Delete project
               </Button>
-            </CardRow>
+            </SettingsRow>
           </Card>
         </SettingsGroup>
       )}
@@ -271,7 +253,7 @@ function LabelsGroup({ projectId }: { projectId: string }) {
   });
 
   return (
-    <SettingsGroup title="Labels" description="Labels show as grey chips on tasks. The colour is kept for exports and integrations.">
+    <SettingsGroup title="Labels">
       <Card>
         {labels.isPending ? (
           <div className="flex justify-center py-4">
@@ -302,7 +284,7 @@ function LabelsGroup({ projectId }: { projectId: string }) {
           }}
         >
           <span className="size-2 shrink-0 rounded-full border border-ink-faint" />
-          <Input className="max-w-56 flex-1" placeholder="New label" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
+          <Input className={cn("max-w-56 flex-1", touchInput)} aria-label="New label" placeholder="New label" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
           <Select className="w-28" value={color} onChange={setColor} options={COLOR_OPTIONS} />
           <Button type="submit" size="sm" className="ml-auto" disabled={!name.trim()}>
             Add
@@ -344,14 +326,13 @@ function ReposGroup({ projectId }: { projectId: string }) {
   });
 
   return (
-    <SettingsGroup title="Git repositories" description="Commits, branches and PRs that mention a task key (GAT-109) link to the task and can move it.">
+    <SettingsGroup title="Git repositories">
       {fresh?.secret && (
         <div className="flex animate-pop flex-col gap-3 rounded-lg border border-edge bg-panel p-4">
           <div>
             <div className="text-sm font-medium text-ink">Add this webhook to {fresh.fullName}</div>
             <div className="text-label text-ink-subtle">
-              {fresh.provider === "github" ? "Settings › Webhooks › Add webhook, content type application/json, events: push and pull requests." : "Settings › Webhooks, trigger: push and merge request events."}{" "}
-              The secret is shown only now.
+              {fresh.provider === "github" ? "JSON, push and pull request events." : "Push and merge request events."} The secret is shown only now.
             </div>
           </div>
           <Field label="Payload URL">
@@ -367,20 +348,14 @@ function ReposGroup({ projectId }: { projectId: string }) {
       )}
       <Card>
         {(repos.data ?? []).map((r) => (
-          <CardRow
-            key={r.id}
-            title={
-              <span className="flex items-center gap-2">
-                <GitBranch className="size-4 text-ink-subtle" />
-                {r.fullName}
-              </span>
-            }
-            description={`${r.provider === "github" ? "GitHub" : "GitLab"} · ${r.lastEventAt ? `last event ${ago(r.lastEventAt, { long: true })}` : "no events yet"}`}
-          >
+          <div key={r.id} className="flex min-h-12 items-center gap-3 py-2 pl-4 pr-2">
+            <GitBranch className="size-4 shrink-0 text-ink-subtle" />
+            <span className="min-w-0 flex-1 truncate text-sm text-ink">{r.fullName}</span>
+            <span className="hidden shrink-0 text-label text-ink-subtle sm:inline">{r.lastEventAt ? `last event ${ago(r.lastEventAt)}` : "no events yet"}</span>
             <Button size="sm" variant="ghost" onClick={() => setRemoving(r)}>
               Remove
             </Button>
-          </CardRow>
+          </div>
         ))}
         <form
           className="flex flex-wrap items-center gap-3 px-4 py-2.5"
@@ -398,7 +373,7 @@ function ReposGroup({ projectId }: { projectId: string }) {
               { value: "gitlab", label: "GitLab" },
             ]}
           />
-          <Input className="min-w-40 flex-1" placeholder="owner/repository" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          <Input className={cn("min-w-40 flex-1", touchInput)} aria-label="Repository" placeholder="owner/repository" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           <Button type="submit" size="sm" disabled={fullName.trim().length < 3} loading={add.isPending}>
             Connect
           </Button>

@@ -1,5 +1,5 @@
 import { TRASH_RETENTION_DAYS, type TrashItem } from "@mado/contract";
-import { Avatar, Button, Checkbox, cn, EmptyState, IconButton, Spinner } from "@mado/ui";
+import { Avatar, Button, Checkbox, cn, IconButton, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Building2, CircleCheck, FileText, FolderKanban, Info, MessageSquare, RotateCcw, Tag, Trash2, X } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
@@ -161,6 +161,7 @@ export function TrashPage() {
       <PageHeader
         crumbs={[{ label: "Settings", to: "/$ws/settings/$section", params: { ws: ws.slug, section: phone ? "menu" : "account" } }, { label: "Trash" }]}
         mobileBack
+        mobileActions={null}
       >
         {owner && items.length > 0 && (
           <Button variant="danger" icon={<Trash2 />} onClick={() => setConfirm({ kind: "empty" })}>
@@ -169,7 +170,7 @@ export function TrashPage() {
         )}
       </PageHeader>
       <div className="flex min-h-0 flex-1">
-        <SettingsNav current="trash" className="lg:flex" />
+        <SettingsNav current="trash" className="2xl:flex" />
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto pb-32 md:pb-10">
           <MobileTitle title="Trash" subtitle={`${items.length} item${items.length === 1 ? "" : "s"}`} />
           <div className="flex items-center gap-2 border-b border-edge px-4 py-2.5 text-label text-ink-subtle md:px-5">
@@ -182,11 +183,9 @@ export function TrashPage() {
               <Spinner />
             </div>
           ) : trash.isError ? (
-            <EmptyState icon={<Trash2 />} title="Couldn't load the trash">
-              {errorMessage(trash.error)}
-            </EmptyState>
+            <p className="px-4 py-6 text-sm text-ink-subtle md:px-5">{errorMessage(trash.error)}</p>
           ) : items.length === 0 ? (
-            <EmptyState icon={<Trash2 />} title="Trash is empty" />
+            <p className="px-4 py-6 text-sm text-ink-subtle md:px-5">Trash is empty.</p>
           ) : (
             <div role="table" aria-label="Trash">
               <div
@@ -201,7 +200,7 @@ export function TrashPage() {
                 <span>Name</span>
                 <span>Deleted by</span>
                 <span>Deleted</span>
-                <span>Purged</span>
+                <span>Purges</span>
                 <span />
               </div>
               {items.map((i, idx) => {

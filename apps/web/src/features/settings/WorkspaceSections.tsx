@@ -1,8 +1,8 @@
 import type { Invite, Member, ShareLink, Workspace } from "@mado/contract";
-import { Avatar, Badge, Button, Card, CardRow, cn, EmptyState, Input, Select, Spinner } from "@mado/ui";
+import { Avatar, Button, Card, cn, IconButton, Input, Menu, Select, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { History, Link2, Lock, Plus, Users } from "@mado/ui/fluent";
+import { Copy, Ellipsis, Link2, Lock, Plus, Trash2 } from "@mado/ui/fluent";
 import { useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -10,7 +10,7 @@ import { ago, shortDate } from "../../lib/time";
 import { toast } from "../../lib/toast";
 import { useMe, useWorkspace } from "../../lib/workspace";
 import { LinkedText } from "../agents/ConnectedAgents";
-import { ConfirmDialog, CopyField, InlineInput, SettingsGroup } from "./shared";
+import { ConfirmDialog, copyText, EmptyLine, InlineInput, SettingsGroup, SettingsRow, TitleAction } from "./shared";
 
 export function WorkspaceSection() {
   const ws = useWorkspace();
@@ -46,33 +46,33 @@ export function WorkspaceSection() {
 
   return (
     <>
-      <SettingsGroup title="General">
+      <SettingsGroup>
         <Card>
-          <CardRow title="Name" description={owner ? "Shown in the sidebar and in invites." : "Only the owner can rename the workspace."}>
-            <InlineInput label="Workspace name" className="w-56" value={ws.name} disabled={!owner} onSave={(name) => rename.mutate(name)} />
-          </CardRow>
-          <CardRow title="URL" description="The workspace slug in every link.">
-            <span className="truncate text-sm text-ink-muted">/{ws.slug}</span>
-          </CardRow>
-          <CardRow title="Your role" description={owner ? "Everything, including purge from trash." : "Read and write docs and tasks in this workspace."}>
-            <Badge>{owner ? "Owner" : "Member"}</Badge>
-          </CardRow>
+          <SettingsRow label="Name" stack>
+            <InlineInput label="Workspace name" className="sm:w-64" value={ws.name} disabled={!owner} onSave={(name) => rename.mutate(name)} />
+          </SettingsRow>
+          <SettingsRow label="URL">
+            <span className="min-w-0 truncate text-sm text-ink-muted">/{ws.slug}</span>
+          </SettingsRow>
+          <SettingsRow label="Your role">
+            <span className="text-sm text-ink-muted">{owner ? "Owner" : "Member"}</span>
+          </SettingsRow>
         </Card>
       </SettingsGroup>
 
       {owner && (
-        <SettingsGroup title="Danger zone" description="Nothing in mado is deleted at once. Deleted projects go to the trash for 30 days.">
+        <SettingsGroup title="Danger zone">
           <Card>
-            <CardRow title="Delete a project" description="Moves its tasks, pages and leads to the trash.">
+            <SettingsRow label="Delete a project">
               <Link to="/$ws/settings/$section" params={{ ws: ws.slug, section: "projects" }} className="text-sm text-accent">
                 Projects
               </Link>
-            </CardRow>
-            <CardRow title="Delete workspace" description="Removes it for every member. Its data stays in the database and in backups.">
+            </SettingsRow>
+            <SettingsRow label="Delete workspace">
               <Button variant="danger" onClick={() => setConfirmDelete(true)}>
                 Delete workspace
               </Button>
-            </CardRow>
+            </SettingsRow>
           </Card>
           <ConfirmDialog
             open={confirmDelete}
@@ -110,7 +110,8 @@ export function MembersSection() {
   const members = useQuery(orpc.workspace.members.queryOptions({ input: { workspaceId: ws.id } }));
   const invites = useQuery(orpc.workspace.invites.queryOptions({ input: { workspaceId: ws.id }, enabled: owner }));
   const [removing, setRemoving] = useState<Member | null>(null);
-  const [fresh, setFresh] = useState<Invite | null>(null);
+  // Invite URLs exist only in the create response; the server keeps a hash.
+  const [urls, setUrls] = useState<Record<string, string>>({});
   const membersKey = orpc.workspace.members.queryKey({ input: { workspaceId: ws.id } });
   const invitesKey = orpc.workspace.invites.queryKey({ input: { workspaceId: ws.id } });
 
@@ -131,7 +132,11 @@ export function MembersSection() {
   const create = useMutation({
     mutationFn: () => client.workspace.createInvite({ workspaceId: ws.id, role: "member" }),
     onSuccess: (inv) => {
-      setFresh(inv);
+      const url = inv.url;
+      if (url) {
+        setUrls((u) => ({ ...u, [inv.id]: url }));
+        toast("Invite link created. Send it to one person.", { action: { label: "Copy", run: () => copyText(url, "Invite link copied") } });
+      }
       queryClient.invalidateQueries({ queryKey: invitesKey });
     },
     onError: (e) => toast.error(`Couldn't create invite: ${errorMessage(e)}`),
@@ -142,7 +147,6 @@ export function MembersSection() {
     onMutate: (inv) => {
       const prev = queryClient.getQueryData<Invite[]>(invitesKey);
       if (prev) queryClient.setQueryData(invitesKey, prev.map((x) => (x.id === inv.id ? { ...x, revokedAt: new Date().toISOString() } : x)));
-      if (fresh?.id === inv.id) setFresh(null);
       return { prev };
     },
     onError: (e, _i, ctx) => {
@@ -152,74 +156,83 @@ export function MembersSection() {
     onSuccess: () => toast("Invite revoked"),
   });
 
-  useCommands(owner ? [{ id: "members.invite", title: "Create invite link", group: "Settings", icon: <Plus />, run: () => create.mutate() }] : [], [owner]);
+  useCommands(owner ? [{ id: "members.invite", title: "Invite member", group: "Settings", icon: <Plus />, run: () => create.mutate() }] : [], [owner]);
 
   const open = (invites.data ?? []).filter(pending);
   return (
     <>
-      <SettingsGroup title="Members" description={members.data ? `${members.data.length} ${members.data.length === 1 ? "person" : "people"}` : undefined}>
-        {members.isPending ? (
-          <Spinner className="self-center" />
-        ) : members.isError ? (
-          <p className="text-label text-ink-subtle">{errorMessage(members.error)}</p>
-        ) : (
-          <Card>
-            {members.data.map((m) => (
-              <div key={m.userId} className="flex min-h-14 items-center gap-3 px-4 py-2.5">
-                <Avatar type="user" initials={m.initials} size="lg" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-ink">
-                    {m.name}
-                    {m.userId === me?.id && <span className="ml-1.5 font-normal text-ink-subtle">you</span>}
-                  </div>
-                  <div className="truncate text-label text-ink-subtle">
-                    {m.email} · joined {shortDate(m.joinedAt)}
-                  </div>
+      {owner && (
+        <TitleAction>
+          <Button variant="primary" icon={<Plus />} loading={create.isPending} onClick={() => create.mutate()}>
+            Invite
+          </Button>
+        </TitleAction>
+      )}
+      {members.isPending ? (
+        <Spinner className="self-center" />
+      ) : members.isError ? (
+        <EmptyLine>{errorMessage(members.error)}</EmptyLine>
+      ) : (
+        <Card>
+          {members.data.map((m) => (
+            <div key={m.userId} className="flex min-h-14 items-center gap-3 py-2 pl-4 pr-2">
+              <Avatar type="user" initials={m.initials} size="lg" />
+              <div className="min-w-0 flex-1 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center md:gap-4">
+                <div className="truncate text-sm text-ink">
+                  {m.name}
+                  {m.userId === me?.id && <span className="ml-1.5 text-ink-subtle">you</span>}
                 </div>
-                <Badge>{m.role === "owner" ? "Owner" : "Member"}</Badge>
-                {owner && m.userId !== me?.id && (
-                  <Button size="sm" variant="ghost" onClick={() => setRemoving(m)}>
-                    Remove
-                  </Button>
-                )}
+                <div className="truncate text-label text-ink-subtle md:text-sm">{m.email}</div>
               </div>
-            ))}
-          </Card>
-        )}
-      </SettingsGroup>
+              <span className="w-16 shrink-0 text-label text-ink-muted md:text-sm">{m.role === "owner" ? "Owner" : "Member"}</span>
+              {owner ? (
+                m.userId !== me?.id ? (
+                  <Menu.Root>
+                    <Menu.Trigger
+                      aria-label={`Options for ${m.name}`}
+                      className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted outline-none hover:bg-state-hover hover:text-ink data-[popup-open]:bg-state-active"
+                    >
+                      <Ellipsis className="size-4" />
+                    </Menu.Trigger>
+                    <Menu.Popup align="end">
+                      <Menu.Item danger icon={<Trash2 />} onClick={() => setRemoving(m)}>
+                        Remove from workspace
+                      </Menu.Item>
+                    </Menu.Popup>
+                  </Menu.Root>
+                ) : (
+                  <span className="size-7 shrink-0" />
+                )
+              ) : null}
+            </div>
+          ))}
+        </Card>
+      )}
 
       {owner && (
-        <SettingsGroup
-          title="Invites"
-          description="Each link lets one person join as a member: they can read and write docs and tasks here."
-          action={
-            <Button icon={<Link2 />} loading={create.isPending} onClick={() => create.mutate()}>
-              Create invite link
-            </Button>
-          }
-        >
-          {fresh?.url && (
-            <div className="flex animate-pop flex-col gap-2 rounded-lg border border-edge bg-panel p-4">
-              <span className="text-sm font-medium text-ink">New invite link</span>
-              <CopyField value={fresh.url} label="Copy invite link" />
-              <span className="text-label text-ink-subtle">Send it to one person. It's shown only now; revoke it below if it leaks.</span>
-            </div>
-          )}
+        <SettingsGroup title="Invite links">
           {open.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-edge px-4 py-5 text-center text-label text-ink-subtle">No pending invites.</div>
+            <EmptyLine>No pending invites.</EmptyLine>
           ) : (
             <Card>
-              {open.map((i) => (
-                <CardRow
-                  key={i.id}
-                  title={i.email ?? "Anyone with the link"}
-                  description={`Created ${ago(i.createdAt, { long: true })} · expires ${shortDate(i.expiresAt)} · ${i.role === "owner" ? "Owner" : "Member"}`}
-                >
-                  <Button size="sm" onClick={() => revoke.mutate(i)}>
-                    Revoke
-                  </Button>
-                </CardRow>
-              ))}
+              {open.map((i) => {
+                const url = urls[i.id];
+                return (
+                  <div key={i.id} className={cn("flex min-h-12 items-center gap-3 py-2 pl-4 pr-2", url && "animate-pop")}>
+                    <Link2 className="size-4 shrink-0 text-ink-subtle" />
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">{i.email ?? "Anyone with the link"}</span>
+                    <span className="shrink-0 text-label text-ink-subtle">expires {shortDate(i.expiresAt)}</span>
+                    {url && (
+                      <IconButton label="Copy invite link" size="sm" onClick={() => copyText(url, "Invite link copied")}>
+                        <Copy />
+                      </IconButton>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => revoke.mutate(i)}>
+                      Revoke
+                    </Button>
+                  </div>
+                );
+              })}
             </Card>
           )}
         </SettingsGroup>
@@ -266,28 +279,19 @@ export function SharingSection() {
   });
 
   if (links.isPending) return <Spinner className="self-center" />;
-  if (links.isError) return <p className="text-label text-ink-subtle">{errorMessage(links.error)}</p>;
+  if (links.isError) return <EmptyLine>{errorMessage(links.error)}</EmptyLine>;
   const sorted = [...links.data].sort((a, b) => Number(shareActive(b)) - Number(shareActive(a)) || b.createdAt.localeCompare(a.createdAt));
-  if (sorted.length === 0) {
-    return (
-      <div className="rounded-lg border border-edge">
-        <EmptyState icon={<Link2 />} title="No share links">
-          Share a wiki page from its ⋯ menu. Guests get a link, optionally with a PIN, and never see the rest of the workspace.
-        </EmptyState>
-      </div>
-    );
-  }
+  if (sorted.length === 0) return <EmptyLine>No share links. Share a wiki page from its ⋯ menu.</EmptyLine>;
   return (
     <>
       <Card>
         {sorted.map((s) => {
           const active = shareActive(s);
           return (
-            <div key={s.id} className={cn("flex min-h-14 items-center gap-3 px-4 py-2.5", !active && "opacity-50")}>
+            <div key={s.id} className={cn("flex min-h-14 items-center gap-3 py-2 pl-4 pr-2", !active && "opacity-50")}>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 truncate text-sm font-medium text-ink">
-                  {s.name}
-                  <Badge>{s.type === "edit" ? "Can edit" : "View"}</Badge>
+                <div className="flex items-center gap-2 text-sm text-ink">
+                  <span className="truncate">{s.name}</span>
                   {s.hasPin && <Lock className="size-3.5 shrink-0 text-ink-subtle" aria-label="PIN protected" />}
                 </div>
                 <div className="truncate text-label text-ink-subtle">
@@ -295,21 +299,16 @@ export function SharingSection() {
                     {s.docTitle}
                   </Link>
                   {" · "}
-                  {s.revokedAt
-                    ? `revoked ${ago(s.revokedAt, { long: true })}`
-                    : !active
-                      ? "expired"
-                      : s.expiresAt
-                        ? `expires ${shortDate(s.expiresAt)}`
-                        : "no expiry"}
-                  {" · "}
-                  {s.lastUsedAt ? `opened ${ago(s.lastUsedAt, { long: true })}` : "never opened"}
+                  {s.revokedAt ? `revoked ${ago(s.revokedAt, { long: true })}` : !active ? "expired" : s.expiresAt ? `expires ${shortDate(s.expiresAt)}` : "no expiry"}
                 </div>
               </div>
-              {active && (
-                <Button size="sm" onClick={() => setConfirm(s)}>
+              <span className="w-16 shrink-0 text-label text-ink-muted md:text-sm">{s.type === "edit" ? "Can edit" : "View"}</span>
+              {active ? (
+                <Button size="sm" variant="ghost" onClick={() => setConfirm(s)}>
                   Revoke
                 </Button>
+              ) : (
+                <span className="w-[66px] shrink-0" />
               )}
             </div>
           );
@@ -341,23 +340,20 @@ export function AuditSection() {
   );
   return (
     <>
-      <div className="flex items-center gap-3">
+      <TitleAction>
         <Select
-          className="w-64"
+          className="w-40 md:w-56"
           value={grantId}
           onChange={setGrantId}
           options={[{ value: "all", label: "Everyone" }, ...(agents.data ?? []).map((a) => ({ value: a.id, label: a.agentName }))]}
         />
-        <span className="text-label text-ink-subtle">{log.data ? `Latest ${log.data.length} entries` : null}</span>
-      </div>
+      </TitleAction>
       {log.isPending ? (
         <Spinner className="self-center" />
       ) : log.isError ? (
-        <p className="text-label text-ink-subtle">{errorMessage(log.error)}</p>
+        <EmptyLine>{errorMessage(log.error)}</EmptyLine>
       ) : log.data.length === 0 ? (
-        <div className="rounded-lg border border-edge">
-          <EmptyState icon={<History />} title="Nothing logged yet" />
-        </div>
+        <EmptyLine>Nothing logged yet.</EmptyLine>
       ) : (
         <div className="overflow-hidden rounded-lg border border-edge bg-panel">
           <div className="hidden h-8 grid-cols-[160px_minmax(0,1fr)_140px_64px] items-center gap-3 border-b border-edge px-4 text-label text-ink-subtle md:grid">
@@ -389,10 +385,6 @@ export function AuditSection() {
           </div>
         </div>
       )}
-      <p className="flex items-center gap-2 text-label text-ink-subtle">
-        <Users className="size-4" />
-        Agents always appear as themselves, never as the person who connected them.
-      </p>
     </>
   );
 }

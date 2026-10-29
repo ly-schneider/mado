@@ -1,5 +1,5 @@
 import type { Me } from "@mado/contract";
-import { Button, Card, CardRow, cn, Field, Input, Kbd, Segmented } from "@mado/ui";
+import { Button, Card, cn, Input, Kbd, Segmented } from "@mado/ui";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Check } from "@mado/ui/fluent";
@@ -10,7 +10,7 @@ import { type Accent, DEFAULT_ACCENT, setAccent, setTheme, type ThemePref, useTh
 import { toast } from "../../lib/toast";
 import { useMe } from "../../lib/workspace";
 import { MIN_PASSWORD } from "../auth/SetupPage";
-import { InlineInput, SettingsGroup } from "./shared";
+import { InlineInput, SettingsGroup, SettingsRow, touchInput } from "./shared";
 
 function useUpdateProfile() {
   return useMutation({
@@ -53,45 +53,44 @@ export function AccountSection() {
     <>
       <SettingsGroup title="Profile">
         <Card>
-          <CardRow title="Name" description="Shown on tasks, comments and in the audit log.">
-            <InlineInput label="Name" className="w-56" value={me.name} onSave={(name) => update.mutate({ name }, { onSuccess: () => toast("Name saved") })} />
-          </CardRow>
-          <CardRow title="Email" description="Used to log in. Ask the instance owner to change it.">
-            <span className="truncate text-sm text-ink-muted">{me.email}</span>
-          </CardRow>
+          <SettingsRow label="Name" stack>
+            <InlineInput label="Name" className="sm:w-64" value={me.name} onSave={(name) => update.mutate({ name }, { onSuccess: () => toast("Name saved") })} />
+          </SettingsRow>
+          <SettingsRow label="Email">
+            <span className="min-w-0 truncate text-sm text-ink-muted">{me.email}</span>
+          </SettingsRow>
         </Card>
       </SettingsGroup>
 
-      <SettingsGroup title="Password" description={`At least ${MIN_PASSWORD} characters. Other sessions stay signed in.`}>
+      <SettingsGroup title="Password">
         <form
-          className="flex flex-col gap-4 rounded-lg border border-edge bg-panel p-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (!short && current && next) change.mutate();
           }}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Current password">
-              <Input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
-            </Field>
-            <Field label="New password">
-              <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
-            </Field>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-label text-danger">
-              {short ? `Use at least ${MIN_PASSWORD} characters.` : change.error ? errorMessage(change.error) : null}
-            </span>
-            <Button type="submit" className="ml-auto" disabled={!current || !next || short} loading={change.isPending}>
-              Change password
-            </Button>
-          </div>
+          <Card>
+            <SettingsRow label="Current password" stack>
+              <Input type="password" autoComplete="current-password" aria-label="Current password" className={cn("sm:w-64", touchInput)} value={current} onChange={(e) => setCurrent(e.target.value)} />
+            </SettingsRow>
+            <SettingsRow label="New password" description={`At least ${MIN_PASSWORD} characters`} stack>
+              <Input type="password" autoComplete="new-password" aria-label="New password" className={cn("sm:w-64", touchInput)} value={next} onChange={(e) => setNext(e.target.value)} />
+            </SettingsRow>
+            <div className="flex min-h-12 items-center gap-3 px-4 py-2">
+              <span className="min-w-0 flex-1 text-label text-danger">
+                {short ? `Use at least ${MIN_PASSWORD} characters.` : change.error ? errorMessage(change.error) : null}
+              </span>
+              <Button type="submit" disabled={!current || !next || short} loading={change.isPending}>
+                Change password
+              </Button>
+            </div>
+          </Card>
         </form>
       </SettingsGroup>
 
       <SettingsGroup title="Session">
         <Card>
-          <CardRow title="Log out" description="Ends this session on this device.">
+          <SettingsRow label="This device">
             <Button
               onClick={async () => {
                 await client.auth.logout();
@@ -101,7 +100,7 @@ export function AccountSection() {
             >
               Log out
             </Button>
-          </CardRow>
+          </SettingsRow>
         </Card>
       </SettingsGroup>
     </>
@@ -140,62 +139,55 @@ export function AppearanceSection() {
   };
 
   return (
-    <>
-      <SettingsGroup title="Theme" description="Black and white. System follows your device.">
-        <Card>
-          <CardRow title="Theme" description="Saved to your account, so other devices pick it up.">
-            <Segmented<ThemePref>
-              value={pref}
-              onChange={(theme) => {
-                setTheme(theme);
-                update.mutate({ theme });
-              }}
-              options={[
-                { value: "system", label: "System" },
-                { value: "dark", label: "Dark" },
-                { value: "light", label: "Light" },
-              ]}
-            />
-          </CardRow>
-        </Card>
-      </SettingsGroup>
-
-      <SettingsGroup title="Accent" description="The only colour in mado: links, focus and selection. Pick anything; it's adjusted per theme so links stay readable.">
-        <Card>
-          <CardRow title="Colour" description="Saved to your account.">
-            <div className="flex items-center gap-2">
-              <label className="relative size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border border-edge" style={{ background: HEX.test(draft) ? draft : accent }}>
-                <input type="color" value={HEX.test(draft) ? draft : accent} onChange={(e) => pick(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Pick accent colour" />
-              </label>
-              <Input value={draft} onChange={(e) => pick(e.target.value)} className="w-28" aria-label="Accent hex" spellCheck={false} />
-            </div>
-          </CardRow>
-          <div className="flex flex-wrap gap-2 px-4 py-3" role="radiogroup" aria-label="Suggested accents">
-            {SUGGESTED.map((s) => {
-              const selected = accent.toLowerCase() === s.hex.toLowerCase();
-              return (
-                <button
-                  key={s.hex}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={s.name}
-                  title={s.name}
-                  onClick={() => pick(s.hex)}
-                  className={cn("flex size-7 items-center justify-center rounded-full border border-edge outline-none active:scale-95", selected && "ring-2 ring-ink ring-offset-2 ring-offset-panel")}
-                  style={{ background: s.hex }}
-                >
-                  {selected && <Check className="size-3.5 text-black/70" filled />}
-                </button>
-              );
-            })}
+    <SettingsGroup>
+      <Card>
+        <SettingsRow label="Theme" stack>
+          <Segmented<ThemePref>
+            value={pref}
+            onChange={(theme) => {
+              setTheme(theme);
+              update.mutate({ theme });
+            }}
+            options={[
+              { value: "system", label: "System" },
+              { value: "dark", label: "Dark" },
+              { value: "light", label: "Light" },
+            ]}
+          />
+        </SettingsRow>
+        <SettingsRow label="Accent">
+          <div className="flex items-center gap-2">
+            <label className="relative size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border border-edge" style={{ background: HEX.test(draft) ? draft : accent }}>
+              <input type="color" value={HEX.test(draft) ? draft : accent} onChange={(e) => pick(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Pick accent colour" />
+            </label>
+            <Input value={draft} onChange={(e) => pick(e.target.value)} className={cn("w-28", touchInput)} aria-label="Accent hex" spellCheck={false} />
           </div>
-        </Card>
-        <p className="text-sm text-ink-muted">
-          Preview: <span className="text-accent">a link to GAT-109</span> and a <span className="rounded bg-state-selected px-1">selected row</span>.
-        </p>
-      </SettingsGroup>
-    </>
+        </SettingsRow>
+        <div className="flex flex-wrap gap-2 px-4 py-3" role="radiogroup" aria-label="Suggested accents">
+          {SUGGESTED.map((s) => {
+            const selected = accent.toLowerCase() === s.hex.toLowerCase();
+            return (
+              <button
+                key={s.hex}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-label={s.name}
+                title={s.name}
+                onClick={() => pick(s.hex)}
+                className={cn("flex size-7 items-center justify-center rounded-full border border-edge outline-none active:scale-95", selected && "ring-2 ring-ink ring-offset-2 ring-offset-panel")}
+                style={{ background: s.hex }}
+              >
+                {selected && <Check className="size-3.5 text-black/70" filled />}
+              </button>
+            );
+          })}
+        </div>
+      </Card>
+      <p className="px-1 text-sm text-ink-muted">
+        Preview: <span className="text-accent">a link to GAT-109</span> and a <span className="rounded bg-state-selected px-1">selected row</span>.
+      </p>
+    </SettingsGroup>
   );
 }
 
@@ -214,39 +206,39 @@ export function DesktopSection() {
   };
   return (
     <>
-      <SettingsGroup title="Server" description="The desktop app talks to one mado server. Changing it signs you out of this one.">
+      <SettingsGroup title="Server">
         <form
-          className="flex flex-col gap-3 rounded-lg border border-edge bg-panel p-4"
           onSubmit={(e) => {
             e.preventDefault();
             save();
           }}
         >
-          <Field label="Server URL">
-            <Input value={server} onChange={(e) => (setServer(e.target.value), setError(null))} placeholder="https://mado.example.ch" />
-          </Field>
-          <div className="flex items-center gap-3">
-            <span className="text-label text-danger">{error}</span>
-            <Button type="submit" className="ml-auto" disabled={server.trim() === apiOrigin()}>
-              Connect
-            </Button>
-          </div>
+          <Card>
+            <SettingsRow label="Server URL" description={error ? <span className="text-danger">{error}</span> : "Changing it signs you out."} stack>
+              <div className="flex gap-2">
+                <Input className={cn("min-w-0 flex-1 sm:w-64", touchInput)} aria-label="Server URL" value={server} onChange={(e) => (setServer(e.target.value), setError(null))} placeholder="https://mado.example.ch" />
+                <Button type="submit" disabled={server.trim() === apiOrigin()}>
+                  Connect
+                </Button>
+              </div>
+            </SettingsRow>
+          </Card>
         </form>
       </SettingsGroup>
-      <SettingsGroup title="Shortcuts" description="Global shortcuts work while mado runs in the background.">
+      <SettingsGroup title="Shortcuts">
         <Card>
-          <CardRow title="Quick capture" description="Opens the capture window from anywhere.">
+          <SettingsRow label="Quick capture" description="Works while mado runs in the background.">
             <span className="flex gap-1">
               <Kbd>{isMac ? "⌥" : "Alt"}</Kbd>
               <Kbd>Space</Kbd>
             </span>
-          </CardRow>
-          <CardRow title="Command palette" description="Inside the app.">
+          </SettingsRow>
+          <SettingsRow label="Command palette">
             <span className="flex gap-1">
               <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
               <Kbd>K</Kbd>
             </span>
-          </CardRow>
+          </SettingsRow>
         </Card>
       </SettingsGroup>
     </>
