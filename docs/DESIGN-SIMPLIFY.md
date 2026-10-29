@@ -42,3 +42,25 @@ Applies to the Figma file `Q0njSllqKRnt7nnpPvMO0X` first, then to the code. Refe
 - Task detail (34:213): keep; property pills in one wrapped row.
 - Wiki (37:277): keep.
 - Search (35:351): remove the "Postgres full-text" footer.
+
+# Pass 3: every remaining screen (web, iOS PWA, desktop)
+
+Same rules as above, applied app-wide. Mobbin references per group:
+
+- Settings (web): Quo account settings, Snowflake settings, hilos workspace modal. Page title only (no subtitle under it). Rows are `label · control`; a one-line description only where the row isn't self-explanatory (e.g. "Key" explains IDs are never reused). No group descriptions, no explanatory paragraphs (AI "What leaves the server" becomes one line under the key field). Members: list rows with role and a ⋯ menu (remove), "Invite" primary button top right; invite links as a compact list (hilos).
+  - https://mobbin.com/screens/73082ea5-d970-4d71-aa6d-317b40cc2fd1 · https://mobbin.com/screens/19c8d00a-91ab-4a8e-908b-f037ce7a3a4d · https://mobbin.com/screens/a325096b-cd0e-4c42-984b-3debd27601f3 · https://mobbin.com/screens/d1e224bf-6308-4010-8a47-506f2a89662a
+- Settings (iOS): Family app settings. Large title, grouped rows with icon, label and value/chevron. No subtitles under titles.
+  - https://mobbin.com/screens/133637f4-e027-47df-88a3-452ac9350f51
+- Inbox (iOS + web): GitHub iOS inbox, Public inbox. Large title, filter chips (All / Unread / Archived), rows: unread dot left, actor + title, one muted line, time right; group by Today / Earlier. Web keeps the split view with the same row anatomy.
+  - https://mobbin.com/screens/c4f3b089-df19-4c84-a52b-1a75b389f03a · https://mobbin.com/screens/a6751b2f-6f73-4d79-90d8-bd6d9ffc30f4
+- Lead detail (CRM): Attio record, Quo contact panel. Header: company name + stage pill + ⋯. Then label/value rows (Contact, Email, Source, Last contact), notes, AI analysis and Draft as plain sections (no boxed cards around everything; one subtle surface for the draft text).
+  - https://mobbin.com/screens/b646ac90-19c2-455c-9b7f-2fa490403c27 · https://mobbin.com/screens/feceab4f-4207-4d69-9efa-b2922cc3a6ff
+- Capture sheet (iOS): Google Calendar new task sheet. ✕ left, primary "Add" pill right, big title input, segmented kind as chips, properties as rows/pills, nothing else.
+  - https://mobbin.com/screens/fcc8e570-ed43-4565-b7dd-c0d89fd489b9
+- Auth (login, setup, onboarding, invite): Linear login (centred mark, one question per screen, one primary button, no footers).
+
+App-wide consistency:
+- Every in-app screen uses `PageHeader` with a breadcrumb (`Project › Section` or `Settings › Section`), never a free-standing title in the header. Leads, Inbox, Search and Wiki index included.
+- Phone: large title equals the section name (Tasks, Wiki, Leads, Inbox, Settings), the workspace/project goes into the small nav above it. No subtitles except one count line where useful ("4 open").
+- Empty states: one short line, no icon blobs or paragraphs.
+- Desktop app (Tauri): same screens; title bar areas use `drag-region`, traffic-light inset when the sidebar is collapsed, no extra status bars.
