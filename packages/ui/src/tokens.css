@@ -1,29 +1,30 @@
 /*
  * Mado tokens. Values come from the Figma "Foundations" page (file Q0njSllqKRnt7nnpPvMO0X).
  * Semantic names only: components never use raw colours.
- * Themes are pure token swaps on [data-theme]; accents swap on [data-accent].
+ * Themes are pure token swaps on [data-theme]. The accent comes from --user-accent, set at runtime.
  */
 @theme {
-  --color-page: oklch(0.17 0.004 75);
-  --color-panel: oklch(0.19 0.004 75);
-  --color-raised: oklch(0.22 0.004 75);
-  --color-overlay: oklch(0.25 0.004 75);
-  --color-edge: oklch(0.28 0.004 75);
-  --color-ink: oklch(0.97 0.004 75);
-  --color-ink-muted: oklch(0.82 0.004 75);
-  --color-ink-subtle: oklch(0.7 0.004 75);
-  --color-ink-faint: oklch(0.58 0.004 75);
-  --color-on-ink: oklch(0.17 0.004 75);
-  --color-accent: oklch(0.8 0.135 75);
+  --color-page: oklch(0.145 0 0);
+  --color-panel: oklch(0.175 0 0);
+  --color-raised: oklch(0.205 0 0);
+  --color-overlay: oklch(0.235 0 0);
+  --color-edge: oklch(0.27 0 0);
+  --color-ink: oklch(0.985 0 0);
+  --color-ink-muted: oklch(0.82 0 0);
+  --color-ink-subtle: oklch(0.68 0 0);
+  --color-ink-faint: oklch(0.54 0 0);
+  --color-on-ink: oklch(0.145 0 0);
+  /* The user picks any colour (Settings › Appearance); dark mode lifts it so links stay readable. */
+  --color-accent: oklch(from var(--user-accent, #58a0f9) max(l, 0.7) c h);
   --color-danger: oklch(0.7 0.16 25);
   --color-success: oklch(0.74 0.13 150);
-  --color-state-hover: color-mix(in oklch, var(--color-ink) 3%, transparent);
-  --color-state-active: color-mix(in oklch, var(--color-ink) 6%, transparent);
-  --color-state-selected: color-mix(in oklch, var(--color-accent) 8%, transparent);
+  --color-state-hover: color-mix(in oklch, var(--color-ink) 4%, transparent);
+  --color-state-active: color-mix(in oklch, var(--color-ink) 7%, transparent);
+  --color-state-selected: color-mix(in oklch, var(--color-accent) 12%, transparent);
   --color-accent-soft: color-mix(in oklch, var(--color-accent) 14%, transparent);
 
   /* Label dots. Muted so they never compete with the accent. */
-  --color-label-grey: oklch(0.7 0.004 75);
+  --color-label-grey: oklch(0.7 0 0);
   --color-label-amber: oklch(0.78 0.12 75);
   --color-label-red: oklch(0.7 0.14 25);
   --color-label-green: oklch(0.74 0.11 150);
@@ -93,20 +94,20 @@
 }
 
 [data-theme="light"] {
-  --color-page: oklch(0.99 0.003 75);
-  --color-panel: oklch(0.97 0.003 75);
-  --color-raised: oklch(0.95 0.003 75);
+  --color-page: oklch(1 0 0);
+  --color-panel: oklch(0.975 0 0);
+  --color-raised: oklch(0.955 0 0);
   --color-overlay: oklch(1 0 0);
-  --color-edge: oklch(0.9 0.003 75);
-  --color-ink: oklch(0.2 0.003 75);
-  --color-ink-muted: oklch(0.38 0.003 75);
-  --color-ink-subtle: oklch(0.5 0.003 75);
-  --color-ink-faint: oklch(0.62 0.003 75);
-  --color-on-ink: oklch(0.99 0.003 75);
-  --color-accent: oklch(0.57 0.14 58);
+  --color-edge: oklch(0.915 0 0);
+  --color-ink: oklch(0.18 0 0);
+  --color-ink-muted: oklch(0.38 0 0);
+  --color-ink-subtle: oklch(0.52 0 0);
+  --color-ink-faint: oklch(0.66 0 0);
+  --color-on-ink: oklch(1 0 0);
+  --color-accent: oklch(from var(--user-accent, #2867e3) min(l, 0.58) c h);
   --color-danger: oklch(0.55 0.18 25);
   --color-success: oklch(0.55 0.13 150);
-  --color-label-grey: oklch(0.55 0.004 75);
+  --color-label-grey: oklch(0.55 0 0);
   --color-label-amber: oklch(0.62 0.13 70);
   --color-label-red: oklch(0.56 0.17 25);
   --color-label-green: oklch(0.56 0.12 150);
@@ -114,26 +115,6 @@
   --color-label-violet: oklch(0.52 0.15 295);
   --color-label-pink: oklch(0.58 0.15 350);
   --color-label-teal: oklch(0.56 0.09 195);
-}
-
-/* Accent alternates kept as modes of the Figma "Accent" collection. Lamp (amber) is the default. */
-[data-accent="sora"] {
-  --color-accent: oklch(0.76 0.11 235);
-}
-[data-accent="ai"] {
-  --color-accent: oklch(0.72 0.13 275);
-}
-[data-accent="shu"] {
-  --color-accent: oklch(0.72 0.16 35);
-}
-[data-theme="light"][data-accent="sora"] {
-  --color-accent: oklch(0.55 0.13 240);
-}
-[data-theme="light"][data-accent="ai"] {
-  --color-accent: oklch(0.5 0.16 275);
-}
-[data-theme="light"][data-accent="shu"] {
-  --color-accent: oklch(0.56 0.18 33);
 }
 
 @layer base {

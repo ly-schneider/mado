@@ -22,7 +22,8 @@ export interface Actor {
   initials: string | null;
 }
 
-export type Accent = "lamp" | "sora" | "ai" | "shu";
+/** Hex colour picked freely by the user, e.g. "#58a0f9". */
+export type Accent = string;
 
 export interface Me {
   id: string;

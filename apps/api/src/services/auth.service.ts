@@ -85,7 +85,7 @@ export class AuthService {
     return row?.user ?? null;
   }
 
-  async updateProfile(userId: string, patch: { name?: string; theme?: "system" | "dark" | "light"; accent?: "lamp" | "sora" | "ai" | "shu" }) {
+  async updateProfile(userId: string, patch: { name?: string; theme?: "system" | "dark" | "light"; accent?: string }) {
     const [user] = await this.dbs.db.update(users).set(patch).where(eq(users.id, userId)).returning();
     return user!;
   }

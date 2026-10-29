@@ -61,7 +61,7 @@ export const contract = {
         z.object({
           name: z.string().trim().min(1).optional(),
           theme: z.enum(["system", "dark", "light"]).optional(),
-          accent: z.enum(["lamp", "sora", "ai", "shu"]).optional(),
+          accent: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
         }),
       )
       .output(type<T.Me>()),

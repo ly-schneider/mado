@@ -58,7 +58,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   theme: text("theme").$type<"system" | "dark" | "light">().notNull().default("system"),
-  accent: text("accent").$type<"lamp" | "sora" | "ai" | "shu">().notNull().default("lamp"),
+  /** Any hex colour; links, focus and selection use it. */
+  accent: text("accent").notNull().default("#58a0f9"),
   createdAt: createdAt(),
 });
 

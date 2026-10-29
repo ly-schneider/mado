@@ -2,11 +2,11 @@ import type { Me } from "@mado/contract";
 import { Button, Card, CardRow, cn, Field, Input, Kbd, Segmented } from "@mado/ui";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Check } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check } from "@mado/ui/fluent";
+import { useEffect, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { apiOrigin, isMac } from "../../lib/platform";
-import { type Accent, setAccent, setTheme, type ThemePref, useTheme } from "../../lib/theme";
+import { type Accent, DEFAULT_ACCENT, setAccent, setTheme, type ThemePref, useTheme } from "../../lib/theme";
 import { toast } from "../../lib/toast";
 import { useMe } from "../../lib/workspace";
 import { MIN_PASSWORD } from "../auth/SetupPage";
@@ -108,36 +108,40 @@ export function AccountSection() {
   );
 }
 
-const ACCENTS: { id: Accent; name: string; note: string }[] = [
-  { id: "lamp", name: "Lamp", note: "amber, default" },
-  { id: "sora", name: "Sora", note: "sky" },
-  { id: "ai", name: "Ai", note: "indigo" },
-  { id: "shu", name: "Shu", note: "vermilion" },
+/** Quick picks only; any colour works. */
+const SUGGESTED: { hex: Accent; name: string }[] = [
+  { hex: DEFAULT_ACCENT, name: "Blue" },
+  { hex: "#a589f0", name: "Violet" },
+  { hex: "#ec76b2", name: "Pink" },
+  { hex: "#f2734f", name: "Red" },
+  { hex: "#f0a43a", name: "Orange" },
+  { hex: "#4ec982", name: "Green" },
+  { hex: "#3cc4c4", name: "Teal" },
+  { hex: "#f5f5f5", name: "White" },
 ];
 
-/** Reads each accent token as the theme would resolve it, so the swatches never hard-code colours. */
-function useAccentSwatches(resolved: string) {
-  // biome-ignore lint/correctness/useExhaustiveDependencies: recompute when the theme flips
-  return useMemo(() => {
-    const root = document.documentElement;
-    const current = root.dataset.accent;
-    const out = {} as Record<Accent, string>;
-    for (const a of ACCENTS) {
-      root.dataset.accent = a.id;
-      out[a.id] = getComputedStyle(root).getPropertyValue("--color-accent").trim();
-    }
-    root.dataset.accent = current;
-    return out;
-  }, [resolved]);
-}
+const HEX = /^#[0-9a-fA-F]{6}$/;
 
 export function AppearanceSection() {
-  const { pref, accent, resolved } = useTheme();
+  const { pref, accent } = useTheme();
   const update = useUpdateProfile();
-  const swatches = useAccentSwatches(resolved);
+  const [draft, setDraft] = useState(accent);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => setDraft(accent), [accent]);
+
+  // The colour input fires on every drag step: apply live, save once the user settles.
+  const pick = (hex: string) => {
+    setDraft(hex);
+    if (!HEX.test(hex)) return;
+    const value = hex.toLowerCase();
+    setAccent(value);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => update.mutate({ accent: value }), 400);
+  };
+
   return (
     <>
-      <SettingsGroup title="Theme" description="Dark and light use the same tones. System follows your device.">
+      <SettingsGroup title="Theme" description="Black and white. System follows your device.">
         <Card>
           <CardRow title="Theme" description="Saved to your account, so other devices pick it up.">
             <Segmented<ThemePref>
@@ -156,39 +160,40 @@ export function AppearanceSection() {
         </Card>
       </SettingsGroup>
 
-      <SettingsGroup
-        title="Accent"
-        description="The only colour in mado. It marks links, focus and selection — nothing else, so everything else stays greyscale."
-      >
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Accent">
-          {ACCENTS.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              role="radio"
-              aria-checked={accent === a.id}
-              onClick={() => {
-                setAccent(a.id);
-                update.mutate({ accent: a.id });
-              }}
-              className={cn(
-                "flex flex-col gap-3 rounded-lg border border-edge bg-panel p-3 text-left outline-none hover:bg-state-hover active:scale-[0.98]",
-                accent === a.id && "border-accent bg-state-selected hover:bg-state-selected",
-              )}
-            >
-              <span className="flex items-center justify-between">
-                <span className="flex size-6 items-center justify-center rounded-full" style={{ background: swatches[a.id] }}>
-                  {accent === a.id && <Check className="size-3.5 text-on-ink" strokeWidth={3} />}
-                </span>
-              </span>
-              <span>
-                <span className="block text-sm font-medium text-ink">{a.name}</span>
-                <span className="block text-label text-ink-subtle">{a.note}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-        <p className="text-label text-ink-subtle">Accent is stored on this device only.</p>
+      <SettingsGroup title="Accent" description="The only colour in mado: links, focus and selection. Pick anything; it's adjusted per theme so links stay readable.">
+        <Card>
+          <CardRow title="Colour" description="Saved to your account.">
+            <div className="flex items-center gap-2">
+              <label className="relative size-8 shrink-0 cursor-pointer overflow-hidden rounded-md border border-edge" style={{ background: HEX.test(draft) ? draft : accent }}>
+                <input type="color" value={HEX.test(draft) ? draft : accent} onChange={(e) => pick(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Pick accent colour" />
+              </label>
+              <Input value={draft} onChange={(e) => pick(e.target.value)} className="w-28" aria-label="Accent hex" spellCheck={false} />
+            </div>
+          </CardRow>
+          <div className="flex flex-wrap gap-2 px-4 py-3" role="radiogroup" aria-label="Suggested accents">
+            {SUGGESTED.map((s) => {
+              const selected = accent.toLowerCase() === s.hex.toLowerCase();
+              return (
+                <button
+                  key={s.hex}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={s.name}
+                  title={s.name}
+                  onClick={() => pick(s.hex)}
+                  className={cn("flex size-7 items-center justify-center rounded-full border border-edge outline-none active:scale-95", selected && "ring-2 ring-ink ring-offset-2 ring-offset-panel")}
+                  style={{ background: s.hex }}
+                >
+                  {selected && <Check className="size-3.5 text-black/70" filled />}
+                </button>
+              );
+            })}
+          </div>
+        </Card>
+        <p className="text-sm text-ink-muted">
+          Preview: <span className="text-accent">a link to GAT-109</span> and a <span className="rounded bg-state-selected px-1">selected row</span>.
+        </p>
       </SettingsGroup>
     </>
   );

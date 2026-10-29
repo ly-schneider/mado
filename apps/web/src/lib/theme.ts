@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from "react";
 
 export type ThemePref = "system" | "dark" | "light";
-export type Accent = "lamp" | "sora" | "ai" | "shu";
+/** Any hex colour. Light and dark variants are derived in CSS (tokens.css). */
+export type Accent = string;
+export const DEFAULT_ACCENT = "#58a0f9";
 
 const listeners = new Set<() => void>();
 const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -18,8 +20,8 @@ function apply() {
   const pref = read<ThemePref>("mado.theme", "system");
   const dark = pref === "dark" || (pref === "system" && media.matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  document.documentElement.dataset.accent = read<Accent>("mado.accent", "lamp");
-  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#100f0d" : "#fdfbfa");
+  document.documentElement.style.setProperty("--user-accent", read<Accent>("mado.accent", DEFAULT_ACCENT));
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0a0a0a" : "#ffffff");
   for (const l of listeners) l();
 }
 media.addEventListener("change", apply);
@@ -46,7 +48,7 @@ function subscribe(l: () => void) {
 export function useTheme() {
   const resolved = useSyncExternalStore(subscribe, () => document.documentElement.dataset.theme as "dark" | "light");
   const pref = useSyncExternalStore(subscribe, () => read<ThemePref>("mado.theme", "system"));
-  const accent = useSyncExternalStore(subscribe, () => read<Accent>("mado.accent", "lamp"));
+  const accent = useSyncExternalStore(subscribe, () => read<Accent>("mado.accent", DEFAULT_ACCENT));
   return { resolved, pref, accent };
 }
 
