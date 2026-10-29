@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 16 16" fill="none">
+  <style>
+    .edge { stroke: #fff; stroke-opacity: .09 }
+    @media (prefers-color-scheme: dark) { .edge { stroke-opacity: .2 } }
+  </style>
+  <defs>
+    <linearGradient id="tile" x1="8" y1="0" x2="8" y2="16" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2C2C2C"/>
+      <stop offset="1" stop-color="#090909"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(3.52 1.28) scale(12)">
+      <stop stop-color="#fff" stop-opacity=".12"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ink" x1="8" y1="3.16" x2="8" y2="12.84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#E2E1DE"/>
+    </linearGradient>
+  </defs>
+  <rect width="16" height="16" rx="3.6" fill="url(#tile)"/>
+  <rect width="16" height="16" rx="3.6" fill="url(#sheen)"/>
+  <rect class="edge" x=".5" y=".5" width="15" height="15" rx="3.1"/>
+  <path fill="url(#ink)" d="M2.56 4.978c0-.481.191-.942.531-1.282.34-.34.802-.532 1.283-.532h7.252c.481 0 .943.192 1.283.532.34.34.531.801.531 1.282v7.374a.484.484 0 0 1-.483.484h-1.451a.484.484 0 0 1-.484-.484V7.698a.907.907 0 0 0-1.813 0v4.654a.484.484 0 0 1-.484.484H7.275a.484.484 0 0 1-.484-.484V7.698a.907.907 0 0 0-1.813 0v4.654a.484.484 0 0 1-.484.484H3.044a.484.484 0 0 1-.484-.484V4.978Z"/>
+</svg>
