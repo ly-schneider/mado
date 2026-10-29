@@ -1,0 +1,65 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "mado",
+  "version": "0.1.0",
+  "identifier": "ch.leys.mado",
+  "build": {
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../../web/dist",
+    "beforeDevCommand": { "script": "bunx vite", "cwd": "../../web", "wait": false },
+    "beforeBuildCommand": { "script": "bunx vite build", "cwd": "../../web" }
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "mado",
+        "url": "/",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 960,
+        "minHeight": 600,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 16, "y": 16 },
+        "backgroundColor": "#100f0d",
+        "dragDropEnabled": false
+      },
+      {
+        "label": "capture",
+        "title": "Quick capture",
+        "url": "/",
+        "width": 680,
+        "height": 224,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "visibleOnAllWorkspaces": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "category": "Productivity",
+    "copyright": "Leys Services",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.png"],
+    "macOS": { "minimumSystemVersion": "13.0" }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": { "schemes": ["mado"] }
+    }
+  }
+}
