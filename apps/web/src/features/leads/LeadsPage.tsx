@@ -2,7 +2,7 @@ import { LEAD_STAGES, type LeadStage, type LeadSummary, type Project, STAGE_LABE
 import { Avatar, Button, Checkbox, cn, Dialog, EmptyState, Field, IconButton, Input, Popover, Segmented, Select, Spinner, StatusIcon } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Briefcase, Building2, ListFilter, Plus } from "lucide-react";
+import { Briefcase, Building2, ListFilter, Plus } from "@mado/ui/fluent";
 import { type DragEvent, useEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";
@@ -13,7 +13,7 @@ import { useProject, useWorkspace } from "../../lib/workspace";
 import { useIsPhone, useMedia } from "../settings/shared";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
 import { LeadDetail } from "./LeadDetail";
-import { byLastContact, LIST_ORDER, sourceLabel, STAGE_ICON, useUpdateLead } from "./leadData";
+import { byLastContact, LIST_ORDER, STAGE_ICON, useUpdateLead } from "./leadData";
 
 type View = "list" | "pipeline";
 
@@ -150,9 +150,9 @@ function Leads({ project }: { project: Project }) {
               Add one with <span className="font-medium text-ink-muted">L</span>, or let an agent with CRM access create them.
             </EmptyState>
           ) : view === "list" ? (
-            <LeadList groups={groups} selected={selected} cursor={flat[cursor]?.id} onOpen={open} onAdd={setCreating} phone={phone} />
+            <LeadList groups={groups} selected={selected} cursor={flat[cursor]?.id} onOpen={open} phone={phone} />
           ) : (
-            <Pipeline project={project} leads={visible} selected={selected} onOpen={open} onAdd={setCreating} />
+            <Pipeline project={project} leads={visible} selected={selected} onOpen={open} />
           )}
         </div>
         {selected && split && (
@@ -204,14 +204,12 @@ function LeadList({
   selected,
   cursor,
   onOpen,
-  onAdd,
   phone,
 }: {
   groups: { stage: LeadStage; items: LeadSummary[] }[];
   selected?: string;
   cursor?: string;
   onOpen: (l: LeadSummary) => void;
-  onAdd: (stage: LeadStage) => void;
   phone: boolean;
 }) {
   return (
@@ -222,9 +220,6 @@ function LeadList({
             <StatusIcon status={STAGE_ICON[g.stage]} />
             <span className="text-sm font-medium text-ink">{STAGE_LABEL[g.stage]}</span>
             <span className="text-sm text-ink-subtle">{g.items.length}</span>
-            <IconButton label={`New ${STAGE_LABEL[g.stage]} lead`} size="sm" className="ml-auto" onClick={() => onAdd(g.stage)}>
-              <Plus />
-            </IconButton>
           </div>
           {g.items.map((l) => (
             <button
@@ -244,14 +239,13 @@ function LeadList({
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-touch text-ink">{l.company.name}</span>
                   <span className="block truncate text-label text-ink-subtle">
-                    {[l.contact?.name, sourceLabel(l), l.lastContactAt && shortDate(l.lastContactAt)].filter(Boolean).join(" · ")}
+                    {[l.contact?.name, l.lastContactAt && shortDate(l.lastContactAt)].filter(Boolean).join(" · ")}
                   </span>
                 </span>
               ) : (
                 <>
                   <span className="min-w-0 shrink truncate text-sm font-medium text-ink">{l.company.name}</span>
                   <span className="min-w-0 flex-1 truncate text-sm text-ink-subtle">{l.contact?.name}</span>
-                  <span className="hidden w-[84px] shrink-0 truncate text-sm text-ink-subtle sm:block">{sourceLabel(l)}</span>
                   <span className="w-[52px] shrink-0 text-right text-sm text-ink-subtle">{l.lastContactAt ? shortDate(l.lastContactAt) : "—"}</span>
                 </>
               )}
@@ -269,13 +263,11 @@ function Pipeline({
   leads,
   selected,
   onOpen,
-  onAdd,
 }: {
   project: Project;
   leads: LeadSummary[];
   selected?: string;
   onOpen: (l: LeadSummary) => void;
-  onAdd: (stage: LeadStage) => void;
 }) {
   const update = useUpdateLead(project.id);
   const [over, setOver] = useState<LeadStage | null>(null);
@@ -317,9 +309,6 @@ function Pipeline({
             <StatusIcon status={STAGE_ICON[c.stage]} />
             <span className="text-sm font-medium text-ink">{STAGE_LABEL[c.stage]}</span>
             <span className="text-sm text-ink-subtle">{c.items.length}</span>
-            <IconButton label={`New ${STAGE_LABEL[c.stage]} lead`} size="sm" className="ml-auto" onClick={() => onAdd(c.stage)}>
-              <Plus />
-            </IconButton>
           </div>
           <div className="flex min-h-24 flex-1 flex-col gap-1.5 overflow-y-auto px-1 pb-3">
             {c.items.map((l) => (
@@ -348,10 +337,7 @@ function Pipeline({
                 {(l.contact?.name || l.company.location) && (
                   <span className="truncate text-label text-ink-muted">{[l.contact?.name, l.company.location].filter(Boolean).join(" · ")}</span>
                 )}
-                <span className="flex items-center gap-2 text-label text-ink-subtle">
-                  <span className="truncate">{sourceLabel(l)}</span>
-                  <span className="ml-auto shrink-0">{l.lastContactAt ? shortDate(l.lastContactAt) : "—"}</span>
-                </span>
+                <span className="text-label text-ink-subtle">{l.lastContactAt ? shortDate(l.lastContactAt) : "—"}</span>
               </button>
             ))}
           </div>

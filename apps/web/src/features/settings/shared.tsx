@@ -1,5 +1,5 @@
 import { Button, cn, Dialog, IconButton } from "@mado/ui";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "../../lib/toast";
 

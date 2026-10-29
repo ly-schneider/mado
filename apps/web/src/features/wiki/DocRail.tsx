@@ -1,7 +1,7 @@
 import type { Backlink } from "@mado/contract";
 import { cn } from "@mado/ui";
 import { Link } from "@tanstack/react-router";
-import { ChevronRight, CircleCheck, FileText } from "lucide-react";
+import { ChevronRight, CircleCheck, FileText } from "@mado/ui/fluent";
 import type { Heading } from "../editor/markdown";
 import { plainInline } from "../editor/markdown";
 
@@ -53,49 +53,28 @@ function backlinkTarget(b: Backlink, ws: string) {
     : ({ to: "/$ws/wiki/$docId", params: { ws, docId: b.id } } as const);
 }
 
-export function Backlinks({ backlinks, ws }: { backlinks: Backlink[]; ws: string }) {
+/** Below the document on web and desktop: one outline pill per linking page or task. */
+export function LinkedFromPills({ backlinks, ws }: { backlinks: Backlink[]; ws: string }) {
+  if (backlinks.length === 0) return null;
   return (
-    <div className="flex flex-col gap-0.5">
-      <div className="mb-1 flex items-center gap-1.5 text-label">
-        <span className="font-medium text-ink-subtle">Linked from</span>
+    <div className="mt-10 flex flex-col gap-2">
+      <div className="flex items-center gap-1.5 text-label">
+        <span className="text-ink-subtle">Linked from</span>
         <span className="text-ink-faint">{backlinks.length}</span>
       </div>
-      {backlinks.length === 0 && <div className="py-1.5 text-label text-ink-faint">No links to this page yet.</div>}
-      {backlinks.map((b) => (
-        <Link key={`${b.type}${b.id}`} {...backlinkTarget(b, ws)} className="group flex flex-col gap-0.5 rounded-md py-1.5 outline-none">
-          <span className="flex min-w-0 items-center gap-2 text-label font-medium text-ink group-hover:underline group-hover:decoration-edge group-hover:underline-offset-4">
+      <div className="flex flex-wrap gap-1.5">
+        {backlinks.map((b) => (
+          <Link
+            key={`${b.type}${b.id}`}
+            {...backlinkTarget(b, ws)}
+            title={b.type === "task" ? b.title : b.subtitle}
+            className="flex h-7 max-w-full items-center gap-1.5 rounded-md border border-edge px-2.5 text-label text-ink outline-none hover:bg-state-hover focus-visible:ring-2 focus-visible:ring-accent"
+          >
             {b.type === "task" ? <CircleCheck className="size-4 shrink-0 text-ink-subtle" /> : <FileText className="size-4 shrink-0 text-ink-subtle" />}
             <span className="truncate">{b.type === "task" ? (b.key ?? b.title) : b.title}</span>
-          </span>
-          <span className="truncate text-label text-ink-subtle">{b.type === "task" ? b.title : b.subtitle}</span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-export function PageStats({ revisions, words, shared, onHistory }: { revisions: number; words: number; shared: string; onHistory?: () => void }) {
-  const row = (label: string, value: React.ReactNode) => (
-    <div className="flex items-center gap-2">
-      <span className="w-[72px] text-ink-subtle">{label}</span>
-      <span className="text-ink-muted">{value}</span>
-    </div>
-  );
-  return (
-    <div className="flex flex-col gap-1.5 text-label">
-      <div className="font-medium text-ink-subtle">Page</div>
-      {row(
-        "Revisions",
-        onHistory ? (
-          <button type="button" onClick={onHistory} className="outline-none hover:text-ink">
-            {revisions}
-          </button>
-        ) : (
-          revisions
-        ),
-      )}
-      {row("Words", words.toLocaleString("en"))}
-      {row("Shared", shared)}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

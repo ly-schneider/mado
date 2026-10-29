@@ -1,6 +1,6 @@
 import { cn } from "@mado/ui";
 import { Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { Bot, Brain, Building2, ChevronRight, FolderKanban, History, Link2, Monitor, Palette, User, Users } from "lucide-react";
+import { Bot, Brain, Building2, ChevronRight, FolderKanban, History, Link2, Monitor, Palette, Trash2, User, Users } from "@mado/ui/fluent";
 import type { ReactNode } from "react";
 import { isTauri } from "../../lib/platform";
 import { useCommands } from "../../lib/shortcuts";
@@ -28,7 +28,8 @@ export type SettingsSection =
   | "desktop";
 
 interface SectionMeta {
-  id: Exclude<SettingsSection, "menu" | "tokens">;
+  /** "trash" is its own route, listed here because the sidebar no longer links it. */
+  id: Exclude<SettingsSection, "menu" | "tokens"> | "trash";
   title: string;
   description: string;
   icon: ReactNode;
@@ -51,6 +52,7 @@ const GROUPS: { label: string; items: SectionMeta[] }[] = [
       { id: "projects", title: "Projects", description: "Keys, labels and Git repositories per project.", icon: <FolderKanban /> },
       { id: "sharing", title: "Share links", description: "Every guest link to a wiki page in this workspace.", icon: <Link2 /> },
       { id: "audit", title: "Audit log", description: "Every write in this workspace, by people and agents.", icon: <History /> },
+      { id: "trash", title: "Trash", description: "", icon: <Trash2 /> },
     ],
   },
   {
@@ -63,7 +65,14 @@ const GROUPS: { label: string; items: SectionMeta[] }[] = [
 ];
 
 const visible = (s: SectionMeta) => s.id !== "desktop" || isTauri;
-const ALL = GROUPS.flatMap((g) => g.items).filter(visible);
+type SectionPage = SectionMeta & { id: Exclude<SectionMeta["id"], "trash"> };
+const ALL = GROUPS.flatMap((g) => g.items).filter((s): s is SectionPage => visible(s) && s.id !== "trash");
+
+function itemLink(ws: string, id: SectionMeta["id"]) {
+  return id === "trash"
+    ? ({ to: "/$ws/trash", params: { ws } } as const)
+    : ({ to: "/$ws/settings/$section", params: { ws, section: id } } as const);
+}
 
 export function SettingsPage({ section }: { section: SettingsSection }) {
   const ws = useWorkspace();
@@ -123,7 +132,7 @@ export function SettingsPage({ section }: { section: SettingsSection }) {
   );
 }
 
-function SectionBody({ id }: { id: SectionMeta["id"] }) {
+function SectionBody({ id }: { id: SectionPage["id"] }) {
   switch (id) {
     case "account":
       return <AccountSection />;
@@ -149,7 +158,7 @@ function SectionBody({ id }: { id: SectionMeta["id"] }) {
 }
 
 /** Secondary settings navigation, a 200px column inside main. Hidden where the content needs the width. */
-function SettingsNav({ current, className }: { current: string; className?: string }) {
+export function SettingsNav({ current, className }: { current: string; className?: string }) {
   const ws = useWorkspace();
   return (
     <nav aria-label="Settings" className={cn("hidden w-[200px] shrink-0 flex-col gap-px overflow-y-auto border-r border-edge px-2 py-3", className)}>
@@ -162,8 +171,7 @@ function SettingsNav({ current, className }: { current: string; className?: stri
             {items.map((s) => (
               <Link
                 key={s.id}
-                to="/$ws/settings/$section"
-                params={{ ws: ws.slug, section: s.id }}
+                {...itemLink(ws.slug, s.id)}
                 className={cn(
                   "flex h-8 items-center gap-2 rounded-md px-2 text-sm font-medium text-ink-muted outline-none hover:bg-state-hover active:bg-state-active [&_svg]:size-4 [&_svg]:text-ink-subtle",
                   current === s.id && "bg-state-selected text-ink hover:bg-state-selected [&_svg]:text-ink",
@@ -197,8 +205,7 @@ function PhoneMenu() {
                   {items.map((s) => (
                     <Link
                       key={s.id}
-                      to="/$ws/settings/$section"
-                      params={{ ws: ws.slug, section: s.id }}
+                      {...itemLink(ws.slug, s.id)}
                       className="flex h-12 items-center gap-3 px-4 text-touch text-ink active:bg-state-active [&>svg:first-child]:size-5 [&>svg:first-child]:text-ink-subtle"
                     >
                       {s.icon}

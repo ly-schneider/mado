@@ -4,10 +4,9 @@ import {
   type GrantLevel,
   type ResourceType,
   RESOURCE_TYPES,
-  TRASH_RETENTION_DAYS,
 } from "@mado/contract";
 import { Checkbox, cn, Field, Input, Segmented, Select } from "@mado/ui";
-import { Clock, Lock, Trash2 } from "lucide-react";
+import { Trash2 } from "@mado/ui/fluent";
 import { Fragment } from "react";
 
 export interface PickerProject {
@@ -79,7 +78,7 @@ export function LevelSegmented({ value, onChange, disabled, size = "md" }: { val
 
 export function AgentNameField({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   return (
-    <Field label="Agent name" hint="shown as the actor in the audit log">
+    <Field label="Agent name">
       <Input value={value} autoFocus={autoFocus} maxLength={80} onChange={(e) => onChange(e.target.value)} />
     </Field>
   );
@@ -97,7 +96,6 @@ export function ProjectLevelTable({ projects, draft, onChange }: { projects: Pic
     <div className="flex flex-col">
       <div className="flex h-7 items-center gap-2 text-label">
         <span className="font-medium text-ink">Projects and level</span>
-        <span className="ml-auto hidden text-ink-subtle sm:inline">Read · Write · Delete (soft)</span>
       </div>
       <div className="divide-y divide-edge overflow-hidden rounded-lg border border-edge">
         {[...groups.entries()].map(([group, list]) => (
@@ -149,25 +147,15 @@ export function ProjectLevelTable({ projects, draft, onChange }: { projects: Pic
 
 export function ExpiryBlock({ value, onChange }: { value: ExpiryOption; onChange: (v: ExpiryOption) => void }) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex w-full flex-col gap-1.5 sm:w-[180px] sm:shrink-0">
         <span className="text-label font-medium text-ink">Expiry</span>
         <Select value={value} onChange={onChange} options={(Object.keys(EXPIRY_LABEL) as ExpiryOption[]).map((v) => ({ value: v, label: EXPIRY_LABEL[v] }))} />
       </div>
-      <ul className="flex min-w-0 flex-col gap-1.5 text-label text-ink-muted sm:pt-[22px] [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-ink-subtle">
-        <li className="flex items-center gap-2">
-          <Trash2 />
-          Deletes are soft: items stay in the trash for {TRASH_RETENTION_DAYS} days.
-        </li>
-        <li className="flex items-center gap-2">
-          <Lock />
-          Purge is never grantable. Only you, in the UI.
-        </li>
-        <li className="flex items-center gap-2">
-          <Clock />
-          Access token 15 min, refresh token rotates.
-        </li>
-      </ul>
+      <span className="flex min-w-0 items-center gap-2 text-label text-ink-muted sm:pt-[22px]">
+        <Trash2 className="size-4 shrink-0 text-ink-subtle" />
+        Deletes are soft. Purge is never grantable.
+      </span>
     </div>
   );
 }

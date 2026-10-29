@@ -1,21 +1,20 @@
-import type { Comment, TaskDetail, TaskStatus, TaskSummary } from "@mado/contract";
+import type { TaskStatus, TaskSummary } from "@mado/contract";
 import { PRIORITY_LABEL } from "@mado/contract";
-import { Avatar, Badge, Button, EmptyState, IconButton, Menu, PriorityIcon, Segmented, Spinner, StatusIcon } from "@mado/ui";
+import { EmptyState, IconButton, Menu, PriorityIcon, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowUpRight, Bell, Calendar, ChevronDown, ChevronRight, CircleCheck, FileText, GitBranch, Link2, ListFilter, PanelRight } from "lucide-react";
+import { ArrowUpRight, Bell, Calendar, ChevronDown, CircleCheck, FileText, GitBranch, Link2, ListFilter, PanelRight } from "@mado/ui/fluent";
 import { useEffect, useMemo, useState } from "react";
 import { orpc } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
-import { ago, dueLabel } from "../../lib/time";
-import { openCapture, pushRecent } from "../../lib/ui";
+import { dueLabel } from "../../lib/time";
+import { pushRecent } from "../../lib/ui";
 import { useMe, useWorkspace, workspaceInitials } from "../../lib/workspace";
-import { StatusBar } from "../shell/AppShell";
 import { MobileTitle } from "../shell/PageHeader";
-import { ACTIVE_FIRST, branchName, copyText, groupByStatus, shortSession, STATUS_LABEL, taskUrl, updateTask, useIsPhone, noOverlay, docLabel } from "./data";
+import { ACTIVE_FIRST, branchName, copyText, groupByStatus, STATUS_LABEL, taskUrl, useIsPhone, noOverlay, docLabel } from "./data";
 import { Description } from "./TaskDetailParts";
 import { applyToTask, PickerHost, PickerPopover, useTaskHotkeys } from "./pickers";
-import { AssigneeAvatar, GroupHeader, InlineMd, Pill, TaskRow, TaskRowPhone } from "./TaskBits";
+import { AssigneeAvatar, GroupHeader, Pill, TaskRow, TaskRowPhone } from "./TaskBits";
 
 type Tab = "assigned" | "created" | "agents";
 type PhoneTab = "today" | "open" | "agents";
@@ -119,7 +118,7 @@ export function MyTasksPage() {
             ) : (
               sections.map((g) => (
                 <section key={g.status}>
-                  <GroupHeader status={g.status} count={g.tasks.length} sticky onAdd={() => openCapture("task", { status: g.status })} />
+                  <GroupHeader status={g.status} count={g.tasks.length} sticky />
                   {g.tasks.map((t) => (
                     <TaskRow key={t.id} task={t} focused={selected?.id === t.id} onClick={() => select(t)} onOpen={() => open(t)} />
                   ))}
@@ -140,15 +139,6 @@ export function MyTasksPage() {
         onOpen={open}
       />
 
-      <StatusBar
-        hints={[
-          { keys: ["j", "k"], label: "move" },
-          { keys: ["↵"], label: "open" },
-          { keys: ["s"], label: "status" },
-          { keys: ["a"], label: "assign" },
-          { keys: ["⌥", "Space"], label: "quick capture" },
-        ]}
-      />
       <PickerHost />
     </div>
   );
@@ -195,7 +185,7 @@ function DetailPane({ task, onClose, onOpen }: { task: TaskSummary; onClose: () 
               {task.assignee?.name.split(" ")[0] ?? "Assign"}
             </Pill>
           </PickerPopover>
-          <PickerPopover kind="labels" target={task} onChange={onChange}>
+          <PickerPopover kind="labels" target={task} onChange={onChange} className="flex flex-wrap gap-2">
             {task.labels.length ? (
               task.labels.map((l) => (
                 <Pill key={l.id} className="rounded-full">
@@ -235,7 +225,6 @@ function DetailPane({ task, onClose, onOpen }: { task: TaskSummary; onClose: () 
                 </span>
               </button>
             </div>
-            <AgentSuggestion task={task} detail={d} />
           </>
         ) : (
           <div className="mt-8 flex justify-center">
@@ -244,57 +233,6 @@ function DetailPane({ task, onClose, onOpen }: { task: TaskSummary; onClose: () 
         )}
       </div>
     </aside>
-  );
-}
-
-/** The latest agent comment on a task you own, with a one-click hand-off. */
-function AgentSuggestion({ task, detail }: { task: TaskSummary; detail: TaskDetail }) {
-  const ws = useWorkspace();
-  const storageKey = `mado.dismissed.${task.id}`;
-  const comment: Comment | undefined = [...detail.comments].reverse().find((c) => c.actor.type === "agent");
-  const [dismissed, setDismissed] = useState(() => {
-    try {
-      return localStorage.getItem(storageKey) === comment?.id;
-    } catch {
-      return false;
-    }
-  });
-  if (!comment || dismissed) return null;
-  const assigned = task.assignee?.type === "agent" && task.assignee.id === comment.actor.id;
-  return (
-    <div className="mt-4 rounded-lg border border-edge px-3.5 py-3">
-      <div className="flex items-center gap-2 text-sm">
-        <Avatar type="agent" size="sm" />
-        <span className="font-medium text-ink">{comment.actor.name}</span>
-        <Badge>agent</Badge>
-        <span className="ml-auto text-label text-ink-subtle">{new Date(comment.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-      </div>
-      <p className="mt-2 text-sm text-ink-muted">
-        “<InlineMd text={comment.body.trim()} wsSlug={ws.slug} />”
-      </p>
-      {!assigned && (
-        <div className="mt-3 flex gap-2">
-          <Button
-            onClick={() =>
-              updateTask(task, { assignee: `agent:${comment.actor.id}` }, { assignee: { type: "agent", id: comment.actor.id, name: comment.actor.name, initials: null } })
-            }
-          >
-            Assign to agent
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              setDismissed(true);
-              try {
-                localStorage.setItem(storageKey, comment.id);
-              } catch {}
-            }}
-          >
-            Not now
-          </Button>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -317,9 +255,7 @@ function MyTasksPhone({
   const ws = useWorkspace();
   const me = useMe().data;
   const navigate = useNavigate();
-  const { data: sessions = [] } = useQuery(orpc.agents.activeSessions.queryOptions({ refetchInterval: 30_000 }));
   const { data: unread } = useQuery(orpc.inbox.unread.queryOptions());
-  const live = sessions[0];
   return (
     <div className="min-h-0 flex-1 overflow-y-auto pb-32 md:hidden">
       <div className="flex h-[52px] items-center justify-between px-4 pt-safe">
@@ -346,25 +282,6 @@ function MyTasksPhone({
           ]}
         />
       </div>
-      {live && (
-        <Link
-          to="/$ws/t/$taskKey"
-          params={{ ws: ws.slug, taskKey: live.lastTaskKey ?? "" }}
-          disabled={!live.lastTaskKey}
-          className="mx-4 mb-3 flex items-center gap-3 rounded-xl border border-edge bg-panel px-3.5 py-3"
-        >
-          <Avatar type="agent" size="lg" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm text-ink">
-              {live.agentName} is on {live.lastTaskKey ? <span className="text-accent">{live.lastTaskKey}</span> : "a task"}
-            </span>
-            <span className="block truncate text-label text-ink-subtle">
-              {live.writes} writes · session {shortSession(live.sessionId)} · {ago(live.lastActiveAt, { long: true })}
-            </span>
-          </span>
-          <ChevronRight className="size-4 text-ink-faint" />
-        </Link>
-      )}
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner />

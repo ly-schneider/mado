@@ -3,7 +3,7 @@ import { PRIORITY_LABEL } from "@mado/contract";
 import { Button, cn, Kbd, MadoMark, Menu, PriorityIcon, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Calendar, ChevronsUpDown, Mic, Sparkles, Zap } from "lucide-react";
+import { Calendar, ChevronsUpDown, Mic, Sparkles, Zap } from "@mado/ui/fluent";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { modKey } from "../../lib/platform";
@@ -68,7 +68,6 @@ export function CapturePanel({
   const [type, setType] = useState<TaskType>("task");
   const [docIds, setDocIds] = useState<string[]>([]);
   const [drafting, setDrafting] = useState(false);
-  const [draftModel, setDraftModel] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const labels = useLabels(projectId);
@@ -160,7 +159,6 @@ export function CapturePanel({
         epic: epic ? { id: epic.id, key: epic.key, title: epic.title } : null,
       }));
       setDocIds(d.docIds);
-      setDraftModel(d.model);
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -309,31 +307,35 @@ export function CapturePanel({
           {draft.priority === "none" ? "Priority" : PRIORITY_LABEL[draft.priority]}
         </Pill>
       </PickerPopover>
-      <PickerPopover kind="labels" target={draft} onChange={pick} label="Labels">
-        <Pill touch={sheet} className={cn(!draft.labels.length && "text-ink-subtle")}>
-          <span className="size-1.5 rounded-full bg-ink-subtle" />
-          {draft.labels.length ? draft.labels.map((l) => l.name).join(", ") : "Label"}
-        </Pill>
-      </PickerPopover>
-      <PickerPopover kind="assignee" target={draft} onChange={pick} label="Assignee">
-        <Pill touch={sheet} className={cn(!draft.assignee && "text-ink-subtle")}>
-          <AssigneeAvatar assignee={draft.assignee} size="xs" />
-          {draft.assignee ? draft.assignee.name.split(" ")[0] : "Assignee"}
-        </Pill>
-      </PickerPopover>
-      {(draft.epic || (epics.data?.length ?? 0) > 0) && (
-        <PickerPopover kind="epic" target={draft} onChange={pick} label="Epic">
-          <Pill touch={sheet} className={cn(!draft.epic && "text-ink-subtle")}>
-            <Zap />
-            {draft.epic ? draft.epic.key : "Epic"}
-          </Pill>
-        </PickerPopover>
-      )}
-      {draft.dueDate && (
-        <Pill touch={sheet}>
-          <Calendar />
-          {shortDate(draft.dueDate)}
-        </Pill>
+      {!sheet && (
+        <>
+          <PickerPopover kind="labels" target={draft} onChange={pick} label="Labels">
+            <Pill className={cn(!draft.labels.length && "text-ink-subtle")}>
+              <span className="size-1.5 rounded-full bg-ink-subtle" />
+              {draft.labels.length ? draft.labels.map((l) => l.name).join(", ") : "Label"}
+            </Pill>
+          </PickerPopover>
+          <PickerPopover kind="assignee" target={draft} onChange={pick} label="Assignee">
+            <Pill className={cn(!draft.assignee && "text-ink-subtle")}>
+              <AssigneeAvatar assignee={draft.assignee} size="xs" />
+              {draft.assignee ? draft.assignee.name.split(" ")[0] : "Assignee"}
+            </Pill>
+          </PickerPopover>
+          {(draft.epic || (epics.data?.length ?? 0) > 0) && (
+            <PickerPopover kind="epic" target={draft} onChange={pick} label="Epic">
+              <Pill className={cn(!draft.epic && "text-ink-subtle")}>
+                <Zap />
+                {draft.epic ? draft.epic.key : "Epic"}
+              </Pill>
+            </PickerPopover>
+          )}
+          {draft.dueDate && (
+            <Pill>
+              <Calendar />
+              {shortDate(draft.dueDate)}
+            </Pill>
+          )}
+        </>
       )}
     </>
   );
@@ -398,10 +400,9 @@ export function CapturePanel({
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             placeholder="Notes in Markdown…"
-            rows={3}
+            rows={2}
             className="mt-2 w-full resize-none bg-transparent text-touch text-ink-muted outline-none placeholder:text-ink-faint"
           />
-          {draftModel && <p className="mb-2 text-label text-ink-subtle">Drafted by {draftModel}. Review, then Add.</p>}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-3">
             {projectSwitch}
             {pills}
@@ -448,33 +449,10 @@ export function CapturePanel({
           rows={details ? Math.min(10, details.split("\n").length + 1) : 1}
           className="mt-1 block w-full resize-none bg-transparent text-sm text-ink-muted outline-none placeholder:text-ink-faint"
         />
-        {draftModel && <p className="mt-2 text-label text-ink-subtle">Drafted by {draftModel}. Review, then create.</p>}
       </div>
       <div className="flex min-h-[52px] flex-wrap items-center gap-1.5 border-t border-edge px-4 py-2.5">
         {pills}
-        <span className="ml-auto text-label text-ink-subtle">{preview}</span>
-      </div>
-      <div className="flex h-11 items-center gap-4 border-t border-edge px-4 text-label text-ink-subtle">
-        {kind === "task" && (
-          <>
-            <span className="flex items-center gap-1.5">
-              <Kbd>#</Kbd> label
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Kbd>!</Kbd> priority
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Kbd>@</Kbd> assignee
-            </span>
-          </>
-        )}
-        <span className="flex items-center gap-1.5">
-          <Kbd>esc</Kbd> close
-        </span>
-        <span className="ml-auto flex items-center gap-1.5">
-          <Kbd>{modKey}</Kbd>
-          <Kbd>↵</Kbd> create and open
-        </span>
+        <span className="ml-auto pl-2 text-label text-ink-subtle">{preview}</span>
         <Button variant="primary" size="sm" kbd="↵" disabled={!cleanTitle} loading={saving} onClick={() => submit(false)}>
           Create
         </Button>

@@ -1,5 +1,5 @@
 import { Checkbox, cn } from "@mado/ui";
-import { Bot, Check, Copy, Info, Lightbulb, TriangleAlert } from "lucide-react";
+import { Bot, Check, Copy, Info, Lightbulb, TriangleAlert } from "@mado/ui/fluent";
 import { Fragment, memo, type ReactNode, useMemo, useState } from "react";
 import { findByTitle, type OpenLink, useLinkContext } from "./links";
 import { linkLabel, toggleTaskAt } from "./markdown";

@@ -6,6 +6,7 @@ import type { EditorView } from "@codemirror/view";
 import {
   Check,
   Ellipsis,
+  Eye,
   FileDown,
   FilePlus,
   FileText,
@@ -19,7 +20,7 @@ import {
   Sparkles,
   Star,
   Trash2,
-} from "lucide-react";
+} from "@mado/ui/fluent";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -29,13 +30,13 @@ import { useMe, useWorkspace } from "../../lib/workspace";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownView } from "../editor/MarkdownView";
 import { outline, readMinutes, wordCount } from "../editor/markdown";
-import { PageHeader } from "../shell/PageHeader";
+import { type Crumb, PageHeader } from "../shell/PageHeader";
 import { useAutosave } from "./autosave";
 import { exportDoc, invalidateTree, moveDoc, patchDoc, patchTree, toggleFavorite, useCreateDoc, useDeleteDoc } from "./data";
 import { MoveDialog, SummaryDialog } from "./DocDialogs";
-import { Backlinks, LinkedFromCard, Outline, PageStats } from "./DocRail";
+import { LinkedFromCard, LinkedFromPills, Outline } from "./DocRail";
 import { HistoryPanel, RevisionContent } from "./HistoryPanel";
-import { EditedBy, EditorStatus, saveLabel, TitleInput, useIsPhone } from "./parts";
+import { EditedBy, TitleInput, useIsPhone } from "./parts";
 import { SharePanel } from "./ShareDialog";
 
 export function DocPage() {
@@ -89,14 +90,12 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [compare, setCompare] = useState(true);
-  const [cursor, setCursor] = useState({ line: 1, col: 1 });
   const [activeHeading, setActiveHeading] = useState(-1);
   const scroller = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const createDoc = useCreateDoc(ws);
   const deleteDoc = useDeleteDoc(ws);
   const { data: tree = [] } = useQuery(orpc.doc.tree.queryOptions({ input: { workspaceId: ws.id } }));
-  const { data: shares } = useQuery(orpc.share.list.queryOptions({ input: { workspaceId: ws.id, docId: doc.id }, enabled: doc.shareLinks > 0 }));
   const project = ws.projects.find((p) => p.id === doc.projectId);
 
   const save = useAutosave({
@@ -119,7 +118,7 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
   const content = useDeferredValue(save.content);
   const headings = useMemo(() => outline(content), [content]);
   const words = useMemo(() => wordCount(content), [content]);
-  const parentTitle = doc.path[doc.path.length - 1]?.title ?? project?.name ?? "Wiki";
+  const parent = doc.path[doc.path.length - 1];
   const freshTitle = !doc.content && (doc.title === "" || doc.title === "Untitled") && doc.canEdit;
 
   const setTitle = (title: string) => {
@@ -221,19 +220,10 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
     [doc.id, doc.favorite, doc.canEdit, history, save.title],
   );
 
-  const shared =
-    doc.shareLinks === 0
-      ? "—"
-      : shares && shares.filter((s) => !s.revokedAt).length === 1
-        ? shares.find((s) => !s.revokedAt)!.type === "edit"
-          ? "Edit link"
-          : "View link"
-        : `${doc.shareLinks} links`;
-
-  const crumbs = [
-    { label: project?.name ?? ws.name },
-    { label: "Wiki", to: "/$ws/wiki", params: { ws: ws.slug }, search: { project: project?.key } },
-    ...doc.path.map((p) => ({ label: p.title || "Untitled", to: "/$ws/wiki/$docId", params: { ws: ws.slug, docId: p.id } })),
+  const crumbs: Crumb[] = [
+    parent
+      ? { label: parent.title || "Untitled", to: "/$ws/wiki/$docId", params: { ws: ws.slug, docId: parent.id } }
+      : { label: "Wiki", to: "/$ws/wiki", params: { ws: ws.slug }, search: { project: project?.key } },
     {
       label: search.rev ? (
         <span className="flex items-center gap-2.5">
@@ -253,21 +243,17 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
           {mobileEdit ? "Done editing" : "Edit"}
         </Menu.Item>
       )}
-      {phone && (
-        <Menu.Item icon={<History />} onClick={toggleHistory}>
-          History
-        </Menu.Item>
-      )}
+      <Menu.Item icon={<History />} kbd={phone ? undefined : "H"} onClick={toggleHistory}>
+        {history ? "Close history" : "Page history"}
+      </Menu.Item>
       {phone && doc.canEdit && (
         <Menu.Item icon={<Share />} onClick={() => setShareOpen(true)}>
           Share…
         </Menu.Item>
       )}
-      {phone && (
-        <Menu.Item icon={<Star />} onClick={() => toggleFavorite(doc)}>
-          {doc.favorite ? "Remove from favorites" : "Add to favorites"}
-        </Menu.Item>
-      )}
+      <Menu.Item icon={<Star />} kbd={phone ? undefined : "F"} onClick={() => toggleFavorite(doc)}>
+        {doc.favorite ? "Remove from favorites" : "Add to favorites"}
+      </Menu.Item>
       {doc.canEdit && (
         <Menu.Item icon={<FilePlus />} kbd="⇧D" onClick={() => createDoc({ parentId: doc.id })}>
           New sub-page
@@ -332,9 +318,14 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
       >
         {search.rev ? (
           <>
-            <Button variant="ghost" aria-pressed={compare} className={cn(compare && "bg-state-active text-ink")} onClick={() => setCompare((c) => !c)}>
-              Compare with current
-            </Button>
+            <IconButton
+              label={compare ? "Hide changes" : "Compare with current"}
+              aria-pressed={compare}
+              className={cn(compare && "bg-state-active text-ink")}
+              onClick={() => setCompare((c) => !c)}
+            >
+              <Eye />
+            </IconButton>
             {doc.canEdit && (
               <Button variant="primary" icon={<RotateCcw />} onClick={restore}>
                 Restore this revision
@@ -343,15 +334,8 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
           </>
         ) : (
           <>
-            <EditedBy actor={doc.updatedBy} at={doc.updatedAt} meId={me?.id} className="hidden lg:flex" />
-            <div className="flex items-center gap-1">
-              <IconButton label="History (H)" size="sm" aria-pressed={history} className={cn(history && "bg-state-active text-ink")} onClick={toggleHistory}>
-                <History />
-              </IconButton>
-              <IconButton label={doc.favorite ? "Remove from favorites (F)" : "Add to favorites (F)"} size="sm" onClick={() => toggleFavorite(doc)}>
-                <Star className={cn(doc.favorite && "fill-current text-ink")} />
-              </IconButton>
-            </div>
+            {!doc.canEdit && <Badge>Read only</Badge>}
+            <EditedBy actor={doc.updatedBy} at={doc.updatedAt} meId={me?.id} state={save.state} className="hidden lg:flex" />
             {doc.canEdit && (
               <Popover.Root open={shareOpen && !phone} onOpenChange={setShareOpen}>
                 <Popover.Trigger render={<Button icon={<Share />} />}>Share</Popover.Trigger>
@@ -381,18 +365,11 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
           />
         ) : (
           <div ref={scroller} onScroll={onScroll} data-doc-scroll className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-            <div className="mx-auto w-full max-w-[728px] px-4 pb-32 pt-1 md:px-6 md:pt-10">
+            <div className="mx-auto w-full max-w-[728px] px-4 pb-32 pt-1 md:px-6 md:pt-8">
               {search.rev ? (
                 <RevisionContent revisionId={search.rev} current={save} compare={compare} workspaceId={ws.id} />
               ) : (
                 <>
-                  <div className="mb-4 hidden items-center gap-2 text-label text-ink-subtle md:flex">
-                    <FileText className="size-4" />
-                    <span className="truncate">{parentTitle}</span>
-                    <span className="text-ink-faint">·</span>
-                    <span className="shrink-0">{readMinutes(words)} min read</span>
-                    {!doc.canEdit && <Badge className="ml-1">Read only</Badge>}
-                  </div>
                   <TitleInput
                     value={save.title}
                     onChange={setTitle}
@@ -411,16 +388,17 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
                         variant="page"
                         placeholder="Write something, or press / for commands"
                         onCheckpoint={() => save.flush(true)}
-                        onCursor={setCursor}
                         viewRef={viewRef}
                       />
                     ) : (
                       <MarkdownView markdown={save.content} workspaceId={ws.id} onToggleTask={doc.canEdit ? save.setContent : undefined} />
                     )}
                   </div>
-                  <div className="xl:hidden">
+                  {phone ? (
                     <LinkedFromCard backlinks={doc.backlinks} ws={ws.slug} />
-                  </div>
+                  ) : (
+                    <LinkedFromPills backlinks={doc.backlinks} ws={ws.slug} />
+                  )}
                 </>
               )}
             </div>
@@ -437,24 +415,11 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
         ) : (
           !phone && (
             <aside className="hidden w-[280px] shrink-0 flex-col gap-7 overflow-y-auto px-6 pb-6 pt-10 xl:flex" aria-label="Page info">
-              <Outline title={save.title} headings={headings} active={activeHeading} onJump={jump} />
-              <Backlinks backlinks={doc.backlinks} ws={ws.slug} />
-              <PageStats revisions={doc.revisionCount} words={words} shared={shared} onHistory={toggleHistory} />
+              {headings.length > 0 && <Outline title={save.title} headings={headings} active={activeHeading} onJump={jump} />}
             </aside>
           )
         )}
       </div>
-
-      {!search.rev && (
-        <EditorStatus
-          hints={editable}
-          items={
-            editable
-              ? ["Markdown", saveLabel(save.state, save.revision), `Ln ${cursor.line}, Col ${cursor.col}`]
-              : ["Markdown", doc.canEdit ? saveLabel(save.state, save.revision) : "Read only", `${words.toLocaleString("en")} words`]
-          }
-        />
-      )}
 
       {phone && (
         <Dialog open={shareOpen} onOpenChange={setShareOpen} position="sheet" title="Share" className="top-auto max-h-[85dvh]">

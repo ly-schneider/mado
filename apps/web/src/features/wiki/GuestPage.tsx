@@ -3,7 +3,7 @@ import { Button, cn, Dialog, EmptyState, IconButton, Input, MadoWordmark, Menu, 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import type { EditorView } from "@codemirror/view";
-import { ChevronRight, Ellipsis, FilePlus, FileText, Folder, FolderOpen, Link2Off, Lock, PanelLeft, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Ellipsis, FilePlus, FileText, Folder, FolderOpen, Link2Off, Lock, PanelLeft, Plus, Trash2 } from "@mado/ui/fluent";
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { client, errorMessage } from "../../lib/orpc";
 import { shortDate } from "../../lib/time";
@@ -14,7 +14,7 @@ import { findByTitle, type OpenLink } from "../editor/links";
 import { readMinutes, wordCount } from "../editor/markdown";
 import { useAutosave } from "./autosave";
 import { childrenMap } from "./data";
-import { EditedBy, EditorStatus, saveLabel, TitleInput, useIsPhone } from "./parts";
+import { EditedBy, TitleInput, useIsPhone } from "./parts";
 
 const pinKey = (token: string) => `mado.guestPin.${token}`;
 
@@ -296,7 +296,6 @@ function GuestEditor({
   const qc = useQueryClient();
   const phone = useIsPhone();
   const viewRef = useRef<EditorView | null>(null);
-  const [cursor, setCursor] = useState({ line: 1, col: 1 });
   const editable = session.type === "edit" && doc.canEdit;
   const save = useAutosave({
     doc,
@@ -378,7 +377,7 @@ function GuestEditor({
               viewRef.current?.dispatch({ selection: { anchor: 0 } });
             }}
           />
-          <EditedBy actor={doc.updatedBy} at={doc.updatedAt} className="mt-2" />
+          <EditedBy actor={doc.updatedBy} at={doc.updatedAt} state={editable ? save.state : undefined} className="mt-2" />
           <div className="mt-5">
             {editable ? (
               <MarkdownEditor
@@ -389,7 +388,6 @@ function GuestEditor({
                 onOpenLink={openLink}
                 linkTitles={titles}
                 onCheckpoint={() => save.flush(true)}
-                onCursor={setCursor}
                 viewRef={viewRef}
               />
             ) : (
@@ -398,10 +396,6 @@ function GuestEditor({
           </div>
         </div>
       </div>
-      <EditorStatus
-        hints={editable}
-        items={editable ? ["Markdown", saveLabel(save.state, save.revision), `Ln ${cursor.line}, Col ${cursor.col}`] : ["Read only", `${words} words`]}
-      />
     </div>
   );
 }

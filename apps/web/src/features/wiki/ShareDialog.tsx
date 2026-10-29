@@ -1,7 +1,7 @@
 import { EXPIRY_OPTIONS, type ExpiryOption, type ShareLink } from "@mado/contract";
 import { Button, cn, Field, IconButton, Input, Segmented, Select } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Check, Copy, Eye, Link2, Lock, PenLine } from "lucide-react";
+import { Check, Copy, Eye, Link2, Lock, PenLine } from "@mado/ui/fluent";
 import { useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { ago, shortDate } from "../../lib/time";

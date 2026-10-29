@@ -2,7 +2,7 @@ import { Dialog as BaseDialog } from "@base-ui/react/dialog";
 import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { Popover as BasePopover } from "@base-ui/react/popover";
 import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from "./fluent";
 import * as React from "react";
 import { cn } from "./cn";
 import { AgentGlyph } from "./icons";
@@ -219,8 +219,8 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
     >
       <span
         className={cn(
-          "absolute top-0.5 size-3.5 rounded-full transition-transform duration-150 ease-out",
-          checked ? "translate-x-[14px] bg-on-ink" : "translate-x-0.5 bg-ink-subtle",
+          "absolute left-0 top-[2px] size-3.5 rounded-full transition-transform duration-150 ease-out",
+          checked ? "translate-x-[14px] bg-on-ink" : "translate-x-[2px] bg-ink-subtle",
         )}
       />
     </button>

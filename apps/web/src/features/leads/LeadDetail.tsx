@@ -2,7 +2,7 @@ import { type Lead, LEAD_STAGES, type LeadSummary, STAGE_LABEL } from "@mado/con
 import { Badge, Button, cn, IconButton, Menu, Spinner, StatusIcon } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Building2, CalendarDays, ChevronLeft, Copy, Link2, Mail, MoreHorizontal, RotateCcw, ShieldCheck, Sparkles, Trash2, User, X } from "lucide-react";
+import { Building2, CalendarDays, ChevronLeft, Copy, Link2, Mail, MoreHorizontal, RotateCcw, Sparkles, Trash2, User, X } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -388,7 +388,6 @@ function AnalysisCard({ lead, disabled }: { lead: Lead; disabled: boolean }) {
         <Sparkles className="size-4 text-ink-subtle" />
         <span className="text-sm font-medium text-ink">AI analysis</span>
         <span className="ml-auto flex items-center gap-2 text-label text-ink-subtle">
-          {a && `OpenRouter · ${Math.max(1, Math.round(a.ms / 1000))}s`}
           {a && (
             <IconButton label="Analyse again" size="sm" className="-mr-1.5" disabled={analyze.isPending} onClick={() => analyze.mutate()}>
               {analyze.isPending ? <Spinner className="size-3.5" /> : <RotateCcw />}
@@ -457,11 +456,7 @@ function DraftCard({ lead, disabled }: { lead: Lead; disabled: boolean }) {
             <div className="whitespace-pre-wrap text-sm text-ink-muted">{d.body}</div>
           </div>
           <footer className="flex flex-wrap items-center gap-2 border-t border-edge py-2 pl-3.5 pr-2">
-            <span className="mr-auto flex items-center gap-1.5 text-label text-ink-subtle">
-              <ShieldCheck className="size-4" />
-              Opt-out line included
-            </span>
-            <Button variant="ghost" onClick={() => window.open(mailto, "_self")} title={email ? `Opens your mail app addressed to ${email}` : "No email on this lead"}>
+            <Button variant="ghost" className="ml-auto" onClick={() => window.open(mailto, "_self")} title={email ? `Opens your mail app addressed to ${email}` : "No email on this lead"}>
               Open in Mail
             </Button>
             <Button icon={<Copy />} onClick={() => copyText(`${subjectLabel}: ${d.subject}\n\n${d.body}`, "Draft copied")}>

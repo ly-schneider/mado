@@ -1,6 +1,6 @@
 import { STATUS_LABEL, TASK_STATUSES, type TaskStatus, type TaskSummary } from "@mado/contract";
 import { Avatar, cn, Popover, StatusIcon, Switch } from "@mado/ui";
-import { ChevronLeft, CircleDashed, CircleUser, Eye, Plus, SlidersHorizontal, Tag, X, Zap } from "lucide-react";
+import { ChevronLeft, CircleDashed, CircleUser, ListFilter, Tag, X, Zap } from "@mado/ui/fluent";
 import { type ReactNode, useMemo, useState } from "react";
 import { useMe } from "../../lib/workspace";
 import { type DisplaySettings, setDisplay, useAssigneeOptions, useDisplay, useEpics, useLabels } from "./data";
@@ -41,9 +41,6 @@ export function useFilterPredicate(f: TaskFilters) {
     };
   }, [f.status, f.labels, f.epic, f.assignee, me]);
 }
-
-export const ghostButton =
-  "inline-flex h-control shrink-0 items-center gap-2 rounded-md px-3 text-sm font-medium text-ink-muted outline-none hover:bg-state-hover hover:text-ink active:bg-state-active [&_svg]:size-4 [&_svg]:text-ink-subtle data-[popup-open]:bg-state-active";
 
 function useFieldItems(projectId: string, field: Field) {
   const labels = useLabels(projectId);
@@ -113,8 +110,16 @@ function FilterChip({ projectId, field, filters, onChange, display }: { projectI
   );
 }
 
-export function AddFilter({ projectId, filters, onChange, open, onOpenChange }: { projectId: string; filters: TaskFilters; onChange: (f: TaskFilters) => void; open: boolean; onOpenChange: (o: boolean) => void }) {
+/** The single header filter button: add-filter picker on top, Display toggles below. */
+export function FilterMenu({ projectId, filters, onChange, open, onOpenChange }: { projectId: string; filters: TaskFilters; onChange: (f: TaskFilters) => void; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [field, setField] = useState<Field | null>(null);
+  const display = useDisplay();
+  const row = (key: keyof DisplaySettings, label: string) => (
+    <label className="flex h-8 items-center justify-between gap-4 rounded-md px-2 text-sm text-ink">
+      {label}
+      <Switch checked={display[key]} onChange={(v) => setDisplay({ [key]: v })} label={label} />
+    </label>
+  );
   return (
     <Popover.Root
       open={open}
@@ -123,13 +128,20 @@ export function AddFilter({ projectId, filters, onChange, open, onOpenChange }: 
         if (!o) setField(null);
       }}
     >
-      <Popover.Trigger className={ghostButton}>
-        <Plus />
-        Add filter
+      <Popover.Trigger
+        aria-label="Filter and display (F)"
+        title="Filter and display (F)"
+        className={cn(
+          "inline-flex size-8 shrink-0 items-center justify-center rounded-md text-ink-subtle outline-none hover:bg-state-hover hover:text-ink active:bg-state-active data-[popup-open]:bg-state-active [&_svg]:size-4",
+          hasFilters(filters) && "text-ink",
+        )}
+      >
+        <ListFilter />
       </Popover.Trigger>
-      <Popover.Popup className="w-64 overflow-hidden">
+      <Popover.Popup align="end" className="w-64 overflow-hidden">
         {open && !field && (
           <div className="p-1">
+            <div className="px-2 pb-1 pt-1.5 text-label text-ink-subtle">Filter</div>
             {(Object.keys(FIELD_META) as Field[]).map((f) => (
               <button
                 key={f}
@@ -139,9 +151,15 @@ export function AddFilter({ projectId, filters, onChange, open, onOpenChange }: 
                 className="flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm text-ink outline-none hover:bg-state-active focus:bg-state-active [&_svg]:size-4 [&_svg]:text-ink-subtle"
               >
                 {FIELD_META[f].icon}
-                {FIELD_META[f].name}
+                <span className="flex-1">{FIELD_META[f].name}</span>
+                {filters[f] && <span className="text-label text-ink-subtle">{split(filters[f]).length}</span>}
               </button>
             ))}
+            <div className="mx-1 my-1 h-px bg-edge" />
+            <div className="px-2 pb-1 pt-1.5 text-label text-ink-subtle">Display</div>
+            {row("showBacklog", "Show backlog")}
+            {row("showDone", "Show done")}
+            {row("showCanceled", "Show canceled")}
           </div>
         )}
         {open && field && (
@@ -158,24 +176,12 @@ export function AddFilter({ projectId, filters, onChange, open, onOpenChange }: 
   );
 }
 
-export function FilterBar({
-  projectId,
-  filters,
-  onChange,
-  addOpen,
-  setAddOpen,
-  hiddenText,
-}: {
-  projectId: string;
-  filters: TaskFilters;
-  onChange: (f: TaskFilters) => void;
-  addOpen: boolean;
-  setAddOpen: (o: boolean) => void;
-  hiddenText: string | null;
-}) {
+/** Active filter chips; renders nothing when no filter is set. */
+export function FilterBar({ projectId, filters, onChange }: { projectId: string; filters: TaskFilters; onChange: (f: TaskFilters) => void }) {
   const labels = useLabels(projectId);
   const epics = useEpics(projectId);
   const assignees = useAssigneeOptions();
+  if (!hasFilters(filters)) return null;
   const labelNames = split(filters.labels).map((n) => labels.data?.find((l) => l.name.toLowerCase() === n.toLowerCase())?.name ?? n);
   const epic = epics.data?.find((e) => e.key === filters.epic);
   const assigneeNames = split(filters.assignee).map((a) => (a === "me" ? "Me" : a === "none" ? "No assignee" : (assignees.find((x) => x.value === a)?.name ?? "Unknown")));
@@ -195,42 +201,13 @@ export function FilterBar({
       {filters.labels && <FilterChip projectId={projectId} field="labels" filters={filters} onChange={onChange} display={labelNames.join(", ")} />}
       {filters.epic && <FilterChip projectId={projectId} field="epic" filters={filters} onChange={onChange} display={epic ? `${epic.key} ${epic.title}` : filters.epic} />}
       {filters.assignee && <FilterChip projectId={projectId} field="assignee" filters={filters} onChange={onChange} display={assigneeNames.join(", ")} />}
-      <AddFilter projectId={projectId} filters={filters} onChange={onChange} open={addOpen} onOpenChange={setAddOpen} />
-      <div className="flex-1" />
-      {hiddenText && (
-        <span className="flex shrink-0 items-center gap-1.5 text-label text-ink-subtle">
-          <Eye className="size-4" />
-          {hiddenText}
-        </span>
-      )}
+      <button
+        type="button"
+        onClick={() => onChange({ status: undefined, labels: undefined, epic: undefined, assignee: undefined })}
+        className="inline-flex h-7 shrink-0 items-center rounded-md px-2 text-label font-medium text-ink-subtle hover:bg-state-hover hover:text-ink"
+      >
+        Clear
+      </button>
     </div>
-  );
-}
-
-export function DisplayMenu() {
-  const display = useDisplay();
-  const row = (key: keyof DisplaySettings, label: string) => (
-    <label className="flex h-8 items-center justify-between gap-4 rounded-md px-2 text-sm text-ink">
-      {label}
-      <Switch checked={display[key]} onChange={(v) => setDisplay({ [key]: v })} label={label} />
-    </label>
-  );
-  return (
-    <Popover.Root>
-      <Popover.Trigger className={ghostButton}>
-        <SlidersHorizontal />
-        Display
-      </Popover.Trigger>
-      <Popover.Popup align="end" className="w-60 p-1">
-        <div className="flex h-8 items-center justify-between px-2 text-sm">
-          <span className="text-ink-subtle">Group by</span>
-          <span className="font-medium text-ink">Status</span>
-        </div>
-        <div className="mx-1 my-1 h-px bg-edge" />
-        {row("showBacklog", "Show backlog")}
-        {row("showDone", "Show done")}
-        {row("showCanceled", "Show canceled")}
-      </Popover.Popup>
-    </Popover.Root>
   );
 }

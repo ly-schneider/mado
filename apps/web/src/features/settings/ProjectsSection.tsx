@@ -2,7 +2,7 @@ import { type Label, LABEL_COLORS, type LabelColor, type Project, type Repo, typ
 import { Button, Card, CardRow, Dialog, EmptyState, Field, IconButton, Input, Select, Spinner, Textarea } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, FolderKanban, GitBranch, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderKanban, GitBranch, Plus, Trash2 } from "@mado/ui/fluent";
 import { useEffect, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";

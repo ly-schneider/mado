@@ -2,7 +2,7 @@ import type { ActivityEntry, Comment, TaskDetail, TaskSummary } from "@mado/cont
 import { Avatar, Badge, Checkbox, cn, Dialog, Button, Kbd, Popover } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Bot, ChevronRight, FileText, GitBranch, GitCommitHorizontal, GitPullRequest, Plus, RotateCcw, ShieldCheck } from "lucide-react";
+import { FileText, GitBranch, GitCommitHorizontal, GitPullRequest, Plus } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { modKey } from "../../lib/platform";
@@ -11,7 +11,7 @@ import { toast } from "../../lib/toast";
 import { useMe, useWorkspace } from "../../lib/workspace";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownView } from "../editor/MarkdownView";
-import { copyText, shortSession, updateTask, docLabel } from "./data";
+import { shortSession, updateTask, docLabel } from "./data";
 import { splitDescription, toggleCriterion } from "./parse";
 import { PickerList } from "./pickers";
 import { InlineMd } from "./TaskBits";
@@ -144,7 +144,7 @@ export function Description({ task, touch, editRef }: { task: TaskDetail; touch?
   );
 }
 
-// ── Linked docs + development ───────────────────────────────────────────
+// ── Linked ──────────────────────────────────────────────────────────────
 
 function SectionTitle({ title, meta, action }: { title: string; meta?: ReactNode; action?: ReactNode }) {
   return (
@@ -196,59 +196,25 @@ export function AddDocButton({ task }: { task: TaskDetail }) {
   );
 }
 
-export function LinkedDocs({ task, touch }: { task: TaskDetail; touch?: boolean }) {
+/** Docs first, then commits, PRs and branches, in one list. */
+export function Linked({ task }: { task: TaskDetail }) {
   const ws = useWorkspace();
+  const count = task.linkedDocs.length + task.git.length;
   return (
     <div className="min-w-0">
-      <SectionTitle title="Linked docs" meta={task.linkedDocs.length || undefined} action={<AddDocButton task={task} />} />
+      <SectionTitle title="Linked" meta={count || undefined} action={<AddDocButton task={task} />} />
       <div className="divide-y divide-edge overflow-hidden rounded-lg border border-edge">
-        {task.linkedDocs.length === 0 && <div className="flex h-9 items-center px-3 text-label text-ink-faint">Docs an agent should read first</div>}
+        {count === 0 && <div className="flex h-9 items-center px-3 text-label text-ink-faint">Nothing linked</div>}
         {task.linkedDocs.map((d) => (
-          <Link
-            key={d.id}
-            to="/$ws/wiki/$docId"
-            params={{ ws: ws.slug, docId: d.id }}
-            className={cn("flex h-9 items-center gap-2.5 px-3 text-sm hover:bg-state-hover", touch && "h-12 text-base")}
-          >
+          <Link key={d.id} to="/$ws/wiki/$docId" params={{ ws: ws.slug, docId: d.id }} className="flex h-9 items-center gap-2.5 px-3 text-sm hover:bg-state-hover">
             <FileText className="size-4 shrink-0 text-ink-subtle" />
             <span className="min-w-0 flex-1 truncate text-ink">{docLabel(d)}</span>
-            {touch ? (
-              <>
-                <span className="text-label text-ink-subtle">doc</span>
-                <ChevronRight className="size-4 text-ink-faint" />
-              </>
-            ) : (
-              d.lastReadByAgentAt && <span className="shrink-0 text-label text-ink-subtle">read by agent · {ago(d.lastReadByAgentAt)}</span>
-            )}
           </Link>
         ))}
-      </div>
-    </div>
-  );
-}
-
-export function Development({ task, branch }: { task: TaskDetail; branch: string }) {
-  return (
-    <div className="min-w-0">
-      <SectionTitle
-        title="Development"
-        meta={
-          <button type="button" className="hover:text-ink" onClick={() => copyText(branch, "branch name")} title="Copy branch name">
-            {task.branch ?? branch}
-          </button>
-        }
-      />
-      <div className="divide-y divide-edge overflow-hidden rounded-lg border border-edge">
-        {task.git.length === 0 && (
-          <button type="button" onClick={() => copyText(`git switch -c ${branch}`, "git command")} className="flex h-9 w-full items-center gap-2.5 px-3 text-left text-label text-ink-faint hover:bg-state-hover">
-            <GitBranch className="size-4 shrink-0 text-ink-subtle" />
-            <span className="truncate">No commits yet · git switch -c {branch}</span>
-          </button>
-        )}
         {task.git.map((g) => (
           <a key={g.id} href={g.url} target="_blank" rel="noreferrer" className="flex h-9 items-center gap-2.5 px-3 text-sm hover:bg-state-hover">
             {g.kind === "pr" ? <GitPullRequest className="size-4 shrink-0 text-ink-subtle" /> : g.kind === "branch" ? <GitBranch className="size-4 shrink-0 text-ink-subtle" /> : <GitCommitHorizontal className="size-4 shrink-0 text-ink-subtle" />}
-            <span className={cn("shrink-0 font-medium text-ink", g.kind === "branch" && "min-w-0 flex-1 truncate")}>{g.kind === "pr" ? `#${g.externalId}` : g.kind === "branch" ? g.externalId : g.externalId.slice(0, 7)}</span>
+            <span className={cn("shrink-0 text-ink-muted", g.kind === "branch" && "min-w-0 flex-1 truncate")}>{g.kind === "pr" ? `#${g.externalId}` : g.kind === "branch" ? g.externalId : g.externalId.slice(0, 7)}</span>
             {g.kind !== "branch" && <span className="min-w-0 flex-1 truncate text-ink-muted">{g.title}</span>}
             {g.state && g.kind === "pr" && <Badge>{g.state}</Badge>}
             <span className="shrink-0 text-label text-ink-subtle">{ago(g.at)}</span>
@@ -288,17 +254,10 @@ export function Activity({ task }: { task: TaskDetail }) {
       ].sort((a, b) => a.at.localeCompare(b.at)),
     [task.activity, task.comments],
   );
-  const hasAgent = task.activity.some((a) => a.actor.type === "agent");
   return (
     <section>
       <div className="mb-2 flex h-6 items-center">
         <span className="text-base font-semibold text-ink">Activity</span>
-        {hasAgent && (
-          <span className="ml-auto flex items-center gap-1.5 text-label text-ink-subtle">
-            <Bot className="size-4" />
-            Agent writes are grouped by session
-          </span>
-        )}
       </div>
       <div className="flex flex-col gap-1">
         {feed.map((item) =>
@@ -308,7 +267,6 @@ export function Activity({ task }: { task: TaskDetail }) {
               <span className="min-w-0 truncate">
                 <span className="font-medium text-ink">{item.entry.actor.name}</span> <InlineMd text={item.entry.text} wsSlug={ws.slug} className="text-ink-subtle" />
               </span>
-              {item.entry.via && <Badge className="shrink-0">{item.entry.via}</Badge>}
               <span className="shrink-0 text-label text-ink-subtle">{ago(item.entry.createdAt)}</span>
             </div>
           ) : (
@@ -365,25 +323,22 @@ export function CommentComposer({ task, focusRef }: { task: TaskDetail; focusRef
   );
 }
 
-// ── Agent access ────────────────────────────────────────────────────────
+// ── Agent session revert ────────────────────────────────────────────────
 
-export function AgentAccess({ task }: { task: TaskDetail }) {
-  const ws = useWorkspace();
-  const [confirm, setConfirm] = useState(false);
+export function RevertSessionDialog({ task, open, onOpenChange }: { task: TaskDetail; open: boolean; onOpenChange: (o: boolean) => void }) {
   const [busy, setBusy] = useState(false);
   const access = task.agentAccess;
-  if (!access) return null;
-  const session = shortSession(access.sessionId);
-  const verbs = access.level === "read" ? "read" : access.level === "write" ? "read and write" : "read, write and delete";
+  if (!access?.sessionId) return null;
+  const sessionId = access.sessionId;
+  const session = shortSession(sessionId);
   const revert = async () => {
-    if (!access.sessionId) return;
     setBusy(true);
     try {
-      const r = await client.agents.revertSession({ sessionId: access.sessionId });
+      const r = await client.agents.revertSession({ sessionId });
       toast(`Reverted ${r.reverted} change${r.reverted === 1 ? "" : "s"}${r.skipped ? `, ${r.skipped} skipped` : ""}`);
       void queryClient.invalidateQueries({ queryKey: orpc.task.key() });
       void queryClient.invalidateQueries({ queryKey: orpc.doc.key() });
-      setConfirm(false);
+      onOpenChange(false);
     } catch (e) {
       toast.error(errorMessage(e));
     } finally {
@@ -391,36 +346,21 @@ export function AgentAccess({ task }: { task: TaskDetail }) {
     }
   };
   return (
-    <div className="rounded-lg border border-edge p-3">
-      <div className="mb-1 flex items-center gap-2 text-sm font-medium text-ink">
-        <ShieldCheck className="size-4 text-ink-subtle" />
-        Agent access
-      </div>
-      <p className="text-label text-ink-subtle">
-        {access.agentName} can {verbs} in {access.projects.join(", ") || ws.name}. Its deletes go to the trash for 30 days. Only you can purge.
-      </p>
-      {access.sessionId && (
-        <button type="button" onClick={() => setConfirm(true)} className="mt-2 flex items-center gap-1.5 text-sm font-medium text-accent hover:underline">
-          <RotateCcw className="size-4" />
-          Revert session {session}
-        </button>
-      )}
-      <Dialog open={confirm} onOpenChange={setConfirm} title={`Revert session ${session}`} className="max-w-sm">
-        <div className="p-5">
-          <h2 className="text-base font-semibold text-ink">Revert session {session}?</h2>
-          <p className="mt-2 text-sm text-ink-muted">
-            Every write {access.agentName} made in this session is undone. Changes someone made on top of them are kept and skipped. Revisions stay in the history.
-          </p>
-          <div className="mt-5 flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setConfirm(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" loading={busy} onClick={revert} autoFocus>
-              Revert session
-            </Button>
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange} title={`Revert session ${session}`} className="max-w-sm">
+      <div className="p-5">
+        <h2 className="text-base font-semibold text-ink">Revert session {session}?</h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          Every write {access.agentName} made in this session is undone. Changes someone made on top of them are kept and skipped. Revisions stay in the history.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" loading={busy} onClick={revert} autoFocus>
+            Revert session
+          </Button>
         </div>
-      </Dialog>
-    </div>
+      </div>
+    </Dialog>
   );
 }

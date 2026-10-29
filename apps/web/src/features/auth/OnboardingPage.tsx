@@ -1,8 +1,8 @@
 import { PROJECT_KEY_RE } from "@mado/contract";
-import { Button, cn, Field, Input, Spinner } from "@mado/ui";
+import { Button, Field, Input, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "@tanstack/react-router";
-import { Check, X } from "lucide-react";
+import { Check, X } from "@mado/ui/fluent";
 import { useEffect, useState } from "react";
 import { errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useMe } from "../../lib/workspace";
@@ -83,7 +83,7 @@ export function OnboardingPage() {
 
   const canSubmit = workspace.trim() && project.trim() && (keyState === "free" || keyState === "unknown");
   return (
-    <AuthScreen title="Create your workspace" description="A workspace holds projects, their wiki, tasks and leads. You can add more projects later.">
+    <AuthScreen title="Create your workspace" description="Projects, their wiki, tasks and leads live here.">
       <form
         className="flex flex-col gap-4"
         onSubmit={(e) => {
@@ -124,13 +124,6 @@ export function OnboardingPage() {
             />
           </Field>
           <KeyStatus state={keyState} />
-        </div>
-        <div className={cn("rounded-md border border-edge bg-panel px-3 py-2.5 text-label text-ink-subtle", !key && "opacity-60")}>
-          Tasks will be{" "}
-          <span className="font-medium text-ink">
-            {key || "KEY"}-1, {key || "KEY"}-2
-          </span>{" "}
-          …
         </div>
         <FormError>{create.error ? errorMessage(create.error) : null}</FormError>
         <Button type="submit" variant="primary" size={phone ? "touch" : "md"} disabled={!canSubmit} loading={create.isPending} className="w-full">

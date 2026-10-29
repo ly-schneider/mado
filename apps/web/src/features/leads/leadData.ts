@@ -18,11 +18,6 @@ export const LIST_ORDER: LeadStage[] = ["replied", "qualified", "contacted", "ne
 
 export type LeadPatch = Parameters<typeof client.crm.update>[0]["patch"];
 
-export function sourceLabel(l: LeadSummary) {
-  if (l.source) return l.source;
-  return l.owner.type === "agent" ? "via agent" : "—";
-}
-
 export function byLastContact(a: LeadSummary, b: LeadSummary) {
   if (a.lastContactAt && b.lastContactAt) return b.lastContactAt.localeCompare(a.lastContactAt);
   if (a.lastContactAt) return -1;

@@ -2,7 +2,7 @@ import { STAGE_LABEL, STATUS_LABEL } from "@mado/contract";
 import { cn, StatusIcon } from "@mado/ui";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
-import { Briefcase, FileText, History, Search, X } from "lucide-react";
+import { Briefcase, FileText, History, Search, X } from "@mado/ui/fluent";
 import { type ReactNode, useDeferredValue, useEffect, useRef, useState } from "react";
 import { orpc } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -222,11 +222,6 @@ export function SearchPage() {
             </section>
           )}
           {empty && <p className="px-4 py-10 text-center text-sm text-ink-subtle">Nothing found for “{deferred}”</p>}
-          {deferred && (
-            <p className="px-4 pb-4 pt-6 text-label text-ink-subtle md:px-3">
-              Postgres full-text · DE + EN{data ? ` · ${data.ms} ms` : results.isFetching ? " · …" : ""}
-            </p>
-          )}
         </div>
       </div>
     </div>

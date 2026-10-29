@@ -1,12 +1,11 @@
 import { Avatar, Badge, Button, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, useSearch } from "@tanstack/react-router";
-import { Bot, Globe, KeyRound, ShieldCheck } from "lucide-react";
+import { Bot, Globe, ShieldCheck } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useState } from "react";
 import { errorMessage, orpc } from "../../lib/orpc";
 import { modKey } from "../../lib/platform";
 import { useCommands } from "../../lib/shortcuts";
-import { ago } from "../../lib/time";
 import { useMe, useWorkspaces } from "../../lib/workspace";
 import { AuthFrame, FormError, LogoTile } from "../auth/AuthLayout";
 import {
@@ -123,9 +122,6 @@ function Consent({ requestId }: { requestId: string }) {
           </ClientRow>
           <ClientRow icon={<Globe />} label="Redirect">
             <span className="truncate text-label font-medium text-ink-muted">{c.client.redirectUri}</span>
-          </ClientRow>
-          <ClientRow icon={<KeyRound />} label="Registered">
-            <span className="truncate text-sm text-ink-muted">Dynamic client registration · {ago(c.client.registeredAt, { long: true })}</span>
           </ClientRow>
         </div>
 

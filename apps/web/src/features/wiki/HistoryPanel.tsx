@@ -1,7 +1,7 @@
 import type { RevisionSummary, ShareLink } from "@mado/contract";
 import { Avatar, Badge, cn, IconButton, Spinner } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
-import { History, RotateCcw, X } from "lucide-react";
+import { History, X } from "@mado/ui/fluent";
 import { Fragment, type ReactNode, useMemo } from "react";
 import { orpc } from "../../lib/orpc";
 import { clock, dayGroup, shortDate } from "../../lib/time";
@@ -101,10 +101,6 @@ export function HistoryPanel({
             </Fragment>
           );
         })}
-      </div>
-      <div className="flex shrink-0 gap-2.5 border-t border-edge px-4 py-3.5 text-label text-ink-subtle">
-        <RotateCcw className="mt-px size-4 shrink-0" />
-        <span>Restoring adds a new revision on top. Nothing is overwritten.</span>
       </div>
     </aside>
   );
@@ -250,18 +246,6 @@ export function RevisionContent({
   if (error || !rev) return <div className="py-16 text-center text-sm text-ink-subtle">This revision could not be loaded.</div>;
   return (
     <div className="flex flex-col gap-4">
-      {compare && (
-        <div className="flex items-center gap-4 text-label text-ink-subtle">
-          <span className="flex items-center gap-1.5">
-            <span className="flex size-4 items-center justify-center rounded-sm border border-edge bg-raised text-kbd">+</span>
-            added since rev {rev.number}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="flex size-4 items-center justify-center rounded-sm border border-edge text-kbd">−</span>
-            removed
-          </span>
-        </div>
-      )}
       <h1 className="text-display text-ink">{snap.title || "Untitled"}</h1>
       {compare ? <DiffView ops={ops} workspaceId={workspaceId} /> : <MarkdownView markdown={snap.content ?? ""} workspaceId={workspaceId} />}
     </div>

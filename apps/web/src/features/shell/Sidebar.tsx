@@ -1,10 +1,9 @@
 import type { DocNode, Workspace } from "@mado/contract";
-import { Avatar, cn, IconButton, Menu } from "@mado/ui";
+import { cn, IconButton, Menu } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
-  Bot,
   Briefcase,
   ChevronsUpDown,
   CircleCheck,
@@ -18,12 +17,10 @@ import {
   Plus,
   Search,
   Settings2,
-  SlidersHorizontal,
   SquareKanban,
   SquarePen,
   Sun,
-  Trash2,
-} from "lucide-react";
+} from "@mado/ui/fluent";
 import { type ReactNode, useMemo, useState } from "react";
 import { client, orpc, queryClient } from "../../lib/orpc";
 import { isTauri } from "../../lib/platform";
@@ -188,8 +185,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = useNavigate();
   const { resolved } = useTheme();
   const { data: unread } = useQuery(orpc.inbox.unread.queryOptions({ refetchInterval: 30_000 }));
-  const { data: agents = [] } = useQuery(orpc.agents.list.queryOptions({ staleTime: 60_000 }));
-  const activeAgents = agents.filter((a) => a.status === "active").length;
 
   const createPage = async () => {
     const node = await client.doc.create({ workspaceId: ws.id, projectId: ws.projects[0]?.id ?? null, title: "Untitled" });
@@ -217,6 +212,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <ChevronsUpDown className="size-4 shrink-0 text-ink-subtle" />
           </Menu.Trigger>
           <Menu.Popup className="w-64">
+            {me && (
+              <div className="flex flex-col px-2 pb-1.5 pt-1 text-label leading-[18px]">
+                <span className="truncate font-medium text-ink">{me.name}</span>
+                <span className="truncate text-ink-subtle">{me.email}</span>
+              </div>
+            )}
+            <Menu.Separator />
             <Menu.Label>Workspaces</Menu.Label>
             {workspaces.map((w) => (
               <Menu.Item
@@ -238,6 +240,9 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             <Menu.Separator />
             <Menu.Item icon={<Settings2 />} onClick={() => navigate({ to: "/$ws/settings/$section", params: { ws: ws.slug, section: "workspace" } })}>
               Workspace settings
+            </Menu.Item>
+            <Menu.Item icon={resolved === "dark" ? <Moon /> : <Sun />} onClick={toggleTheme}>
+              Theme: {resolved}
             </Menu.Item>
             <Menu.Item
               icon={<LogOut />}
@@ -313,9 +318,6 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </NavItem>
           </div>
         ))}
-        <NavItem to="/$ws/trash" params={{ ws: ws.slug }} icon={<Trash2 />} active={path.endsWith("/trash")} onClick={onNavigate}>
-          Trash
-        </NavItem>
 
         <SectionLabel
           action={
@@ -332,33 +334,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
       <NavItem
         to="/$ws/settings/$section"
-        params={{ ws: ws.slug, section: "agents" }}
-        icon={<Bot />}
-        count={activeAgents}
-        active={path.endsWith("/settings/agents")}
-        onClick={onNavigate}
-      >
-        Connected agents
-      </NavItem>
-      <NavItem
-        to="/$ws/settings/$section"
         params={{ ws: ws.slug, section: "account" }}
-        icon={<SlidersHorizontal />}
-        active={path.includes("/settings/") && !path.endsWith("/settings/agents")}
+        icon={<Settings2 />}
+        active={path.includes("/settings/") || path.endsWith("/trash")}
         onClick={onNavigate}
       >
         Settings
       </NavItem>
-      <div className="flex items-center gap-2 px-2 pt-2">
-        <Avatar type="user" initials={me?.initials} size="md" />
-        <div className="flex min-w-0 flex-1 flex-col text-label leading-[18px]">
-          <span className="truncate font-medium text-ink">{me?.name.split(" ")[0]}</span>
-          <span className="text-ink-subtle">{ws.role === "owner" ? "Owner" : "Member"}</span>
-        </div>
-        <IconButton label={resolved === "dark" ? "Light theme" : "Dark theme"} size="sm" onClick={toggleTheme}>
-          {resolved === "dark" ? <Moon /> : <Sun />}
-        </IconButton>
-      </div>
     </nav>
   );
 }

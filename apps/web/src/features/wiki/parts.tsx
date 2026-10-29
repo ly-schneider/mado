@@ -1,5 +1,5 @@
 import type { Actor } from "@mado/contract";
-import { Avatar, cn, Kbd } from "@mado/ui";
+import { Avatar, cn } from "@mado/ui";
 import { forwardRef, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ago } from "../../lib/time";
 import type { SaveState } from "./autosave";
@@ -25,16 +25,32 @@ export function useTick(ms = 30_000) {
   }, [ms]);
 }
 
-export function EditedBy({ actor, at, meId, className, suffix }: { actor: Actor | null; at: string; meId?: string; className?: string; suffix?: string }) {
+export function EditedBy({
+  actor,
+  at,
+  meId,
+  state,
+  className,
+  suffix,
+}: { actor: Actor | null; at: string; meId?: string; state?: SaveState; className?: string; suffix?: string }) {
   useTick();
   const name = actor ? (actor.type === "user" && actor.id === meId ? "you" : actor.name) : null;
+  const pending = state === "saving" || state === "unsaved";
   return (
     <span className={cn("flex min-w-0 items-center gap-2 text-label text-ink-subtle", className)}>
       {actor && <Avatar type={actor.type} initials={actor.initials} size="sm" title={actor.name} />}
       <span className="truncate">
-        Edited {ago(at, { long: true })}
-        {name && ` by ${name}`}
-        {suffix}
+        {state === "error" ? (
+          "Not saved · retrying"
+        ) : pending ? (
+          "Saving…"
+        ) : (
+          <>
+            Edited {ago(at, { long: true })}
+            {name && ` by ${name}`}
+            {suffix}
+          </>
+        )}
       </span>
     </span>
   );
@@ -86,31 +102,3 @@ export const TitleInput = forwardRef<
     />
   );
 });
-
-export function saveLabel(state: SaveState, revision: number) {
-  if (state === "saving") return "Saving…";
-  if (state === "unsaved") return "Edited";
-  if (state === "error") return "Not saved · retrying";
-  return revision > 0 ? `Saved · revision ${revision}` : "Saved";
-}
-
-/** Bottom editor status line from the Web 03 design. */
-export function EditorStatus({ items, hints = true }: { items: string[]; hints?: boolean }) {
-  return (
-    <div className="hidden h-7 shrink-0 items-center gap-4 border-t border-edge px-5 text-label text-ink-subtle md:flex">
-      {items.map((t) => (
-        <span key={t} className="truncate">
-          {t}
-        </span>
-      ))}
-      {hints && (
-        <span className="ml-auto flex shrink-0 items-center gap-1.5">
-          <Kbd>[[</Kbd>
-          link a page
-          <Kbd className="ml-1">/</Kbd>
-          commands
-        </span>
-      )}
-    </div>
-  );
-}

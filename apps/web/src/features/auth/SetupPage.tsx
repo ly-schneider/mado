@@ -38,7 +38,7 @@ export function SetupPage() {
 
   const short = password.length < MIN_PASSWORD;
   return (
-    <AuthScreen title="Set up mado" description="Create the owner account. You can invite others once your workspace exists.">
+    <AuthScreen title="Set up mado" description="Create the owner account.">
       <form
         className="flex flex-col gap-4"
         onSubmit={(e) => {

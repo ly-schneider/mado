@@ -2,7 +2,7 @@ import type { DocNode } from "@mado/contract";
 import { Button, cn, EmptyState, IconButton, Input, Segmented, Spinner } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { BookOpen, ChevronRight, FileText, Folder, FolderOpen, Plus, Search, Star } from "lucide-react";
+import { BookOpen, ChevronRight, FileText, Folder, FolderOpen, Plus, Search, Star } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { orpc } from "../../lib/orpc";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";

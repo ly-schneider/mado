@@ -1,7 +1,7 @@
 import type { Priority, TaskStatus, TaskSummary } from "@mado/contract";
 import { PRIORITIES, PRIORITY_LABEL } from "@mado/contract";
 import { Avatar, Badge, cn, Dialog, Popover, PriorityIcon, StatusIcon } from "@mado/ui";
-import { Check, Plus, Search, Zap } from "lucide-react";
+import { Check, Plus, Search, Zap } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";

@@ -1,10 +1,9 @@
 import type { Assignee, TaskStatus, TaskSummary } from "@mado/contract";
 import { STATUS_LABEL } from "@mado/contract";
-import { Avatar, cn, LabelChip, PriorityIcon, StatusIcon } from "@mado/ui";
+import { Avatar, cn, PriorityIcon, StatusIcon } from "@mado/ui";
 import { Link } from "@tanstack/react-router";
-import { GitPullRequest, Plus } from "lucide-react";
 import { Fragment, type ReactNode, forwardRef } from "react";
-import { dueLabel, shortDate } from "../../lib/time";
+import { shortDate } from "../../lib/time";
 
 export function AssigneeAvatar({ assignee, size = "sm", className }: { assignee: Pick<Assignee, "type" | "initials" | "name"> | null; size?: "xs" | "sm" | "md"; className?: string }) {
   if (!assignee) {
@@ -37,15 +36,7 @@ export function InlineMd({ text, wsSlug, className }: { text: string; wsSlug?: s
   );
 }
 
-export function PrRef({ number }: { number: string }) {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-ink-subtle">
-      <GitPullRequest className="size-3.5" />#{number}
-    </span>
-  );
-}
-
-/** Board card (Figma 15:219): raised + edge, accent border and selected tone when focused. */
+/** Board card: key + assignee, status + title on a raised tone; accent ring and selected tone when focused. */
 export const TaskCard = forwardRef<
   HTMLDivElement,
   {
@@ -65,7 +56,7 @@ export const TaskCard = forwardRef<
       onClick={onClick}
       onDoubleClick={onOpen}
       className={cn(
-        "flex select-none flex-col gap-2 rounded-lg border border-edge bg-raised p-3 outline-none",
+        "flex select-none flex-col gap-2 rounded-lg border border-transparent bg-raised p-3 outline-none",
         focused && "border-accent bg-[linear-gradient(var(--color-state-selected),var(--color-state-selected)),linear-gradient(var(--color-raised),var(--color-raised))]",
         dragging && "opacity-40",
         className,
@@ -82,21 +73,11 @@ export const TaskCard = forwardRef<
         </span>
         <span className="line-clamp-3 min-w-0 flex-1 text-sm font-medium text-ink">{task.title}</span>
       </div>
-      {(task.priority !== "none" || task.labels.length > 0 || task.prNumber || task.dueDate) && (
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <PriorityIcon priority={task.priority} />
-          {task.labels.map((l) => (
-            <LabelChip key={l.id} name={l.name} />
-          ))}
-          {task.prNumber && <PrRef number={task.prNumber} />}
-          {task.dueDate && <span className="text-label text-ink-subtle">{dueLabel(task.dueDate)}</span>}
-        </div>
-      )}
     </div>
   );
 });
 
-/** 32px list row (Figma "Task row"): priority, key, status, title … labels, PR, date, assignee. */
+/** 32px list row: priority, key, status, title … date, assignee. */
 export function TaskRow({
   task,
   focused,
@@ -126,17 +107,6 @@ export function TaskRow({
       <span className="w-[60px] shrink-0 truncate text-label font-medium text-ink-subtle">{task.key}</span>
       <StatusIcon status={task.status} />
       <span className="min-w-0 flex-1 truncate font-medium text-ink">{task.title}</span>
-      <span className="hidden min-w-0 items-center gap-1.5 overflow-hidden lg:flex">
-        {task.labels.map((l) => (
-          <LabelChip key={l.id} name={l.name} />
-        ))}
-      </span>
-      {task.labels[0] && (
-        <span className="flex lg:hidden">
-          <LabelChip name={task.labels[0].name} />
-        </span>
-      )}
-      {task.prNumber && <PrRef number={task.prNumber} />}
       {showDate && <span className="w-12 shrink-0 text-right text-label text-ink-subtle">{task.dueDate ? shortDate(task.dueDate) : "—"}</span>}
       <AssigneeAvatar assignee={task.assignee} size="sm" />
     </div>
@@ -145,7 +115,6 @@ export function TaskRow({
 
 /** Two-line phone row from the iOS My tasks design. */
 export function TaskRowPhone({ task, onClick, focused }: { task: TaskSummary; onClick?: () => void; focused?: boolean }) {
-  const due = dueLabel(task.dueDate);
   return (
     <button
       type="button"
@@ -158,11 +127,7 @@ export function TaskRowPhone({ task, onClick, focused }: { task: TaskSummary; on
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="truncate text-base font-medium text-ink">{task.title}</span>
-        <span className="flex min-w-0 items-center gap-2 text-label text-ink-subtle">
-          <span className="shrink-0">{task.key}</span>
-          {task.labels[0] && <LabelChip name={task.labels[0].name} />}
-          {due && <span className="truncate">{due}</span>}
-        </span>
+        <span className="truncate text-label text-ink-subtle">{task.key}</span>
       </span>
       <span className="flex flex-col items-end justify-between gap-2 py-0.5">
         <PriorityIcon priority={task.priority} />
@@ -172,17 +137,12 @@ export function TaskRowPhone({ task, onClick, focused }: { task: TaskSummary; on
   );
 }
 
-export function GroupHeader({ status, count, onAdd, className, sticky }: { status: TaskStatus; count: number; onAdd?: () => void; className?: string; sticky?: boolean }) {
+export function GroupHeader({ status, count, className, sticky }: { status: TaskStatus; count: number; className?: string; sticky?: boolean }) {
   return (
     <div className={cn("flex h-8 items-center gap-2 bg-panel px-5 text-sm", sticky && "sticky top-0 z-10", className)}>
       <StatusIcon status={status} />
       <span className="font-medium text-ink-muted">{STATUS_LABEL[status]}</span>
       <span className="text-label text-ink-subtle">{count}</span>
-      {onAdd && (
-        <button type="button" aria-label={`New task in ${STATUS_LABEL[status]}`} onClick={onAdd} className="ml-auto rounded-md p-1 text-ink-subtle hover:bg-state-hover hover:text-ink">
-          <Plus className="size-4" />
-        </button>
-      )}
     </div>
   );
 }

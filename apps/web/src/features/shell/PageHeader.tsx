@@ -1,6 +1,6 @@
 import { cn, IconButton } from "@mado/ui";
 import { Link, useRouter } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@mado/ui/fluent";
 import { Fragment, type ReactNode } from "react";
 import { isTauri } from "../../lib/platform";
 import { useUi } from "../../lib/ui";

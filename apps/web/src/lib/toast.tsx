@@ -1,5 +1,5 @@
 import { cn } from "@mado/ui";
-import { X } from "lucide-react";
+import { X } from "@mado/ui/fluent";
 import { useSyncExternalStore } from "react";
 
 interface Toast {

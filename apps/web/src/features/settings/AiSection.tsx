@@ -1,7 +1,7 @@
 import type { AiSettings } from "@mado/contract";
 import { Badge, Button, Card, CardRow, Input, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "@mado/ui/fluent";
 import { useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { toast } from "../../lib/toast";

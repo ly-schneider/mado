@@ -1,12 +1,10 @@
 import { cn, Spinner } from "@mado/ui";
-import { useQuery } from "@tanstack/react-query";
 import { Link, Navigate, Outlet, useNavigate, useParams, useRouterState } from "@tanstack/react-router";
-import { BookOpen, Briefcase, CircleCheck, Plus, Search } from "lucide-react";
+import { BookOpen, Briefcase, CircleCheck, Plus, Search } from "@mado/ui/fluent";
 import { useEffect, useState } from "react";
-import { orpc } from "../../lib/orpc";
 import { isTauri } from "../../lib/platform";
 import { useCommands } from "../../lib/shortcuts";
-import { setAccent, setTheme } from "../../lib/theme";
+import { setAccent, setTheme, toggleTheme } from "../../lib/theme";
 import { openCapture, openPalette, setUi, useUi } from "../../lib/ui";
 import { useMe, useWorkspaces } from "../../lib/workspace";
 import { DesktopBridge } from "../desktop/DesktopBridge";
@@ -98,6 +96,7 @@ export function AppShell() {
             group: "Settings",
             run: () => navigate({ to: "/$ws/settings/$section", params: { ws: ws.slug, section: "account" } }),
           },
+          { id: "toggle.theme", title: "Toggle dark/light theme", group: "Settings", run: toggleTheme },
           { id: "toggle.sidebar", title: "Toggle sidebar", keys: "$mod+Backslash", hint: "⌘\\", group: "Actions", global: true, run: () => setUi((s) => ({ sidebarOpen: !s.sidebarOpen })) },
         ]
       : [],
@@ -188,28 +187,3 @@ function MobileTabBar({ slug, projectKey }: { slug: string; projectKey: string }
     </>
   );
 }
-
-/** Desktop-app status bar (Desktop 01 design): shortcut hints left, sync state right. */
-export function StatusBar({ hints }: { hints: { keys: string[]; label: string }[] }) {
-  const { data: info } = useQuery(orpc.settings.instance.queryOptions({ staleTime: 300_000 }));
-  if (!isTauri) return null;
-  return (
-    <div className="flex h-7 shrink-0 items-center gap-4 border-t border-edge bg-panel px-4 text-label text-ink-subtle">
-      {hints.map((h) => (
-        <span key={h.label} className="flex items-center gap-1.5">
-          {h.keys.map((k) => (
-            <kbd key={k} className="rounded-sm border border-edge bg-raised px-1 text-kbd">
-              {k}
-            </kbd>
-          ))}
-          {h.label}
-        </span>
-      ))}
-      <span className="ml-auto flex items-center gap-1.5">
-        <span className="size-1.5 rounded-full bg-ink-subtle" />
-        Synced · {info ? new URL(info.publicUrl).hostname : "…"}
-      </span>
-    </div>
-  );
-}
-

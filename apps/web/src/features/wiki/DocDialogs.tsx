@@ -2,7 +2,7 @@ import type { DocNode } from "@mado/contract";
 import { Button, Dialog, Spinner } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Command as Cmdk } from "cmdk";
-import { Copy, FileText, FolderInput, Sparkles } from "lucide-react";
+import { Copy, FileText, FolderInput, Sparkles } from "@mado/ui/fluent";
 import { useMemo } from "react";
 import { orpc } from "../../lib/orpc";
 import { MarkdownView } from "../editor/MarkdownView";

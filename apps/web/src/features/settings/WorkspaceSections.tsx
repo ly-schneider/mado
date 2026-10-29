@@ -2,7 +2,7 @@ import type { Invite, Member, ShareLink, Workspace } from "@mado/contract";
 import { Avatar, Badge, Button, Card, CardRow, cn, EmptyState, Input, Select, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { History, Link2, Lock, Plus, Users } from "lucide-react";
+import { History, Link2, Lock, Plus, Users } from "@mado/ui/fluent";
 import { useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";

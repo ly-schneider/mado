@@ -1,9 +1,9 @@
 import type { Notification, TaskDetail } from "@mado/contract";
 import { PRIORITY_LABEL } from "@mado/contract";
-import { Avatar, Button, cn, EmptyState, PriorityIcon, Segmented, Spinner, StatusIcon } from "@mado/ui";
+import { Avatar, cn, EmptyState, IconButton, PriorityIcon, Spinner, StatusIcon } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { Archive, ArrowUpRight, FileText, Inbox, MailOpen } from "lucide-react";
+import { Archive, ArrowUpRight, FileText, Inbox, Mail, MailOpen } from "@mado/ui/fluent";
 import { useEffect, useMemo, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
@@ -97,6 +97,11 @@ export function InboxPage() {
     navigate({ search: { n: next?.id }, replace: true });
   };
 
+  const toggleBox = () => {
+    setBox(box === "inbox" ? "archived" : "inbox");
+    navigate({ search: {}, replace: true });
+  };
+
   useEffect(() => {
     if (selected) document.querySelector(`[data-notification="${selected.id}"]`)?.scrollIntoView({ block: "nearest" });
   }, [selected?.id]);
@@ -110,44 +115,43 @@ export function InboxPage() {
       { id: "inbox.unread", title: "Mark as unread", keys: "u", hint: "U", group: "Actions", run: () => selected && markRead([selected], !selected.readAt) },
       { id: "inbox.readAll", title: "Mark all as read", keys: "Shift+U", group: "Actions", run: () => markRead(items, true) },
       { id: "inbox.archiveRead", title: "Archive all read", group: "Actions", run: () => archive(items.filter((n) => n.readAt)), when: () => box === "inbox" },
-      { id: "inbox.box", title: box === "inbox" ? "Show archived" : "Show inbox", keys: "Shift+A", group: "Actions", run: () => setBox(box === "inbox" ? "archived" : "inbox") },
+      { id: "inbox.box", title: box === "inbox" ? "Show archived" : "Show inbox", keys: "Shift+A", group: "Actions", run: toggleBox },
     ],
     [items, selected, box],
   );
 
   const unread = items.filter((n) => !n.readAt).length;
-  const boxSwitch = (
-    <Segmented
-      value={box}
-      onChange={(b) => {
-        setBox(b);
-        navigate({ search: {}, replace: true });
-      }}
-      options={[
-        { value: "inbox", label: "Inbox" },
-        { value: "archived", label: "Archived" },
-      ]}
-    />
-  );
-
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PageHeader crumbs={[{ label: "Inbox" }]} center={<span className="text-label text-ink-subtle">{unread ? `${unread} unread` : ""}</span>}>
-        {boxSwitch}
+      <PageHeader
+        crumbs={box === "inbox" ? [{ label: "Inbox" }] : [{ label: "Inbox" }, { label: "Archived" }]}
+        mobileActions={
+          <IconButton label={box === "inbox" ? "Show archived" : "Show inbox"} size="touch" variant="secondary" className="rounded-full" onClick={toggleBox}>
+            {box === "inbox" ? <Archive /> : <Inbox />}
+          </IconButton>
+        }
+      >
+        <div className="flex items-center">
+          {box === "inbox" && (
+            <IconButton label="Mark all as read (⇧U)" size="sm" disabled={!unread} onClick={() => markRead(items, true)}>
+              <MailOpen />
+            </IconButton>
+          )}
+          <IconButton label={box === "inbox" ? "Show archived (⇧A)" : "Show inbox (⇧A)"} size="sm" onClick={toggleBox}>
+            {box === "inbox" ? <Archive /> : <Inbox />}
+          </IconButton>
+        </div>
       </PageHeader>
-      <MobileTitle title="Inbox" subtitle={unread ? `${unread} unread` : "All caught up"} />
+      <MobileTitle title={box === "inbox" ? "Inbox" : "Archived"} subtitle={box === "inbox" && unread ? `${unread} unread` : undefined} />
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 w-full flex-col md:w-[400px] md:shrink-0 md:border-r md:border-edge xl:w-[440px]">
-          <div className="px-4 pb-3 md:hidden">{boxSwitch}</div>
           <div className="min-h-0 flex-1 overflow-y-auto pb-32 md:pb-4">
             {query.isPending && !query.data ? (
               <div className="flex justify-center py-16">
                 <Spinner />
               </div>
             ) : items.length === 0 ? (
-              <EmptyState icon={<Inbox />} title={box === "inbox" ? "Inbox zero" : "Nothing archived"}>
-                {box === "inbox" ? "Mentions, assignments and agent updates on your tasks land here." : undefined}
-              </EmptyState>
+              <EmptyState icon={<Inbox />} title={box === "inbox" ? "Inbox zero" : "Nothing archived"} />
             ) : (
               items.map((n) => (
                 <NotificationRow
@@ -169,9 +173,7 @@ export function InboxPage() {
             <Detail n={selected} onOpen={() => openEntity(selected)} onArchive={box === "inbox" ? archiveSelected : undefined} onToggleRead={() => markRead([selected], !selected.readAt)} />
           ) : (
             <div className="flex flex-1 items-center justify-center">
-              <EmptyState icon={<Inbox />} title={items.length ? "Select a notification" : "No notifications"}>
-                J and K to move, E to archive, U to mark unread.
-              </EmptyState>
+              <EmptyState icon={<Inbox />} title={items.length ? "Select a notification" : "No notifications"} />
             </div>
           )}
         </div>
@@ -215,17 +217,17 @@ function Detail({ n, onOpen, onArchive, onToggleRead }: { n: Notification; onOpe
     <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-edge px-6">
         <span className="flex-1 truncate text-sm text-ink-subtle">{n.entityType === "task" ? n.ref : n.entityType === "doc" ? "Page" : n.entityType}</span>
-        <Button variant="ghost" size="sm" icon={<MailOpen />} kbd="U" onClick={onToggleRead}>
-          {n.readAt ? "Mark unread" : "Mark read"}
-        </Button>
+        <IconButton label={n.readAt ? "Mark unread (U)" : "Mark read (U)"} size="sm" onClick={onToggleRead}>
+          {n.readAt ? <Mail /> : <MailOpen />}
+        </IconButton>
         {onArchive && (
-          <Button variant="ghost" size="sm" icon={<Archive />} kbd="E" onClick={onArchive}>
-            Archive
-          </Button>
+          <IconButton label="Archive (E)" size="sm" onClick={onArchive}>
+            <Archive />
+          </IconButton>
         )}
-        <Button size="sm" icon={<ArrowUpRight />} kbd="↵" onClick={onOpen}>
-          Open
-        </Button>
+        <IconButton label="Open (↵)" size="sm" onClick={onOpen}>
+          <ArrowUpRight />
+        </IconButton>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[760px] px-8 py-6">

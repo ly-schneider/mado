@@ -62,7 +62,6 @@ export function LoginPage() {
           Log in
         </Button>
       </form>
-      <p className="text-center text-label text-ink-subtle">No account? Ask the workspace owner for an invite link.</p>
     </AuthScreen>
   );
 }

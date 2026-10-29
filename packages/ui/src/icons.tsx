@@ -1,5 +1,5 @@
 import type { Priority, TaskStatus } from "@mado/contract";
-import { Bot } from "lucide-react";
+import { Bot } from "./fluent";
 import { cn } from "./cn";
 
 const R = "M12.75 7C12.75 10.1756 10.1756 12.75 7 12.75C3.82436 12.75 1.25 10.1756 1.25 7C1.25 3.82436 3.82436 1.25 7 1.25C10.1756 1.25 12.75 3.82436 12.75 7Z";

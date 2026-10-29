@@ -1,7 +1,7 @@
 import type { TaskStatus, TaskSummary } from "@mado/contract";
-import { Button, cn, EmptyState, Menu, Segmented, Spinner, StatusIcon } from "@mado/ui";
+import { Button, cn, EmptyState, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Ellipsis, EyeOff, ListFilter, Plus, SquareKanban } from "lucide-react";
+import { Plus, SquareKanban } from "@mado/ui/fluent";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TaskView } from "../../router";
 import { useCommands } from "../../lib/shortcuts";
@@ -9,7 +9,7 @@ import { openCapture, pushRecent } from "../../lib/ui";
 import { useProject, useWorkspace } from "../../lib/workspace";
 import { MobileTitle, PageHeader } from "../shell/PageHeader";
 import { ACTIVE_FIRST, groupByStatus, setDisplay, STATUS_LABEL, updateTask, useDisplay, useProjectTasks, noOverlay } from "./data";
-import { DisplayMenu, FilterBar, ghostButton, hasFilters, type TaskFilters, useFilterPredicate } from "./FilterBar";
+import { FilterBar, FilterMenu, hasFilters, type TaskFilters, useFilterPredicate } from "./FilterBar";
 import { PickerHost, useTaskHotkeys } from "./pickers";
 import { GroupHeader, TaskCard, TaskRow, TaskRowPhone } from "./TaskBits";
 
@@ -38,15 +38,6 @@ export function TasksPage() {
     if (filters.status) return order.filter((s) => filters.status!.split(",").includes(s));
     return order.filter((s) => (s === "backlog" ? display.showBacklog : s === "done" ? display.showDone : s === "canceled" ? display.showCanceled : true));
   }, [view, display, filters.status]);
-
-  const hiddenText = useMemo(() => {
-    const parts: string[] = [];
-    for (const s of ["backlog", "done", "canceled"] as TaskStatus[]) {
-      const n = groups.get(s)?.length ?? 0;
-      if (!visible.includes(s) && n > 0) parts.push(`${STATUS_LABEL[s]} ${n}`);
-    }
-    return parts.length ? `${parts.join(" · ")} hidden` : null;
-  }, [groups, visible]);
 
   /** Board columns, or list groups with tasks, in on-screen order. */
   const columns = useMemo(
@@ -104,8 +95,9 @@ export function TasksPage() {
       { id: "tasks.view.board", title: "Show as board", keys: "v b", hint: "V then B", group: "Tasks", run: () => setView("board") },
       { id: "tasks.view.list", title: "Show as list", keys: "v l", hint: "V then L", group: "Tasks", run: () => setView("list") },
       { id: "tasks.filter", title: "Add filter", keys: "f", hint: "F", group: "Tasks", run: () => setAddOpen(true) },
-      { id: "tasks.filter.clear", title: "Clear filters", group: "Tasks", run: () => setFilters({ labels: undefined, epic: undefined, assignee: undefined }), when: () => hasFilters(filters) },
+      { id: "tasks.filter.clear", title: "Clear filters", group: "Tasks", run: () => setFilters({ status: undefined, labels: undefined, epic: undefined, assignee: undefined }), when: () => hasFilters(filters) },
       { id: "tasks.backlog", title: display.showBacklog ? "Hide backlog" : "Show backlog", group: "Tasks", run: () => setDisplay({ showBacklog: !display.showBacklog }) },
+      { id: "tasks.done", title: display.showDone ? "Hide done" : "Show done", group: "Tasks", run: () => setDisplay({ showDone: !display.showDone }) },
       { id: "tasks.canceled", title: display.showCanceled ? "Hide canceled" : "Show canceled", group: "Tasks", run: () => setDisplay({ showCanceled: !display.showCanceled }) },
     ],
     [flat, focused, view, project?.id, display, search],
@@ -132,17 +124,13 @@ export function TasksPage() {
         }
         mobileActions={null}
       >
-        <button type="button" className={ghostButton} onClick={() => setAddOpen(true)}>
-          <ListFilter />
-          Filter
-        </button>
-        <DisplayMenu />
+        <FilterMenu projectId={project.id} filters={filters} onChange={setFilters} open={addOpen} onOpenChange={setAddOpen} />
         <Button variant="primary" icon={<Plus />} kbd="C" onClick={() => create()}>
           New task
         </Button>
       </PageHeader>
       <MobileTitle title={project.name} subtitle={`${filtered.filter((t) => t.status !== "done" && t.status !== "canceled").length} open`} />
-      <FilterBar projectId={project.id} filters={filters} onChange={setFilters} addOpen={addOpen} setAddOpen={setAddOpen} hiddenText={hiddenText} />
+      <FilterBar projectId={project.id} filters={filters} onChange={setFilters} />
 
       {tasks.isPending && !tasks.data ? (
         <div className="flex flex-1 items-center justify-center">
@@ -250,15 +238,10 @@ function Board({ columns, focusId, onOpen, onCreate }: ViewProps) {
               onDrop();
             }}
           >
-            <div className="group flex h-8 shrink-0 items-center gap-2 pl-1 pr-1">
+            <div className="flex h-8 shrink-0 items-center gap-2 px-1">
               <StatusIcon status={status} />
-              <span className="text-label font-medium text-ink">{STATUS_LABEL[status]}</span>
-              <span className="text-label text-ink-subtle">{tasks.length}</span>
-              <div className="flex-1" />
-              <button type="button" aria-label={`New task in ${STATUS_LABEL[status]}`} onClick={() => onCreate(status)} className="rounded-md p-1 text-ink-subtle hover:bg-state-hover hover:text-ink">
-                <Plus className="size-4" />
-              </button>
-              <ColumnMenu status={status} onCreate={() => onCreate(status)} />
+              <span className="text-sm font-medium text-ink">{STATUS_LABEL[status]}</span>
+              <span className="text-sm text-ink-subtle">{tasks.length}</span>
             </div>
             <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-4 pt-2">
               {tasks.map((t) => {
@@ -304,28 +287,7 @@ function DropLine() {
   return <div className="-my-[5px] h-0.5 rounded-full bg-accent" />;
 }
 
-function ColumnMenu({ status, onCreate }: { status: TaskStatus; onCreate: () => void }) {
-  const hideKey = status === "backlog" ? "showBacklog" : status === "done" ? "showDone" : status === "canceled" ? "showCanceled" : null;
-  return (
-    <Menu.Root>
-      <Menu.Trigger aria-label={`${STATUS_LABEL[status]} options`} className="rounded-md p-1 text-ink-subtle outline-none hover:bg-state-hover hover:text-ink data-[popup-open]:bg-state-active">
-        <Ellipsis className="size-4" />
-      </Menu.Trigger>
-      <Menu.Popup align="end">
-        <Menu.Item icon={<Plus />} onClick={onCreate}>
-          New task in {STATUS_LABEL[status]}
-        </Menu.Item>
-        {hideKey && (
-          <Menu.Item icon={<EyeOff />} onClick={() => setDisplay({ [hideKey]: false })}>
-            Hide column
-          </Menu.Item>
-        )}
-      </Menu.Popup>
-    </Menu.Root>
-  );
-}
-
-function ListView({ columns, focusId, onOpen, onCreate }: ViewProps) {
+function ListView({ columns, focusId, onOpen }: ViewProps) {
   if (columns.length === 0) {
     return (
       <div className="flex-1">
@@ -339,7 +301,7 @@ function ListView({ columns, focusId, onOpen, onCreate }: ViewProps) {
     <div role="table" className="min-h-0 flex-1 overflow-y-auto pb-8">
       {columns.map(({ status, tasks }) => (
         <section key={status}>
-          <GroupHeader status={status} count={tasks.length} onAdd={() => onCreate(status)} sticky />
+          <GroupHeader status={status} count={tasks.length} sticky />
           {tasks.map((t) => (
             <TaskRow key={t.id} task={t} focused={focusId === t.id} onClick={() => onOpen(t)} className={cn(focusId === t.id && "bg-state-selected")} />
           ))}

@@ -16,7 +16,7 @@ import {
   Trash2,
   Undo2,
   X,
-} from "lucide-react";
+} from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";
@@ -127,13 +127,8 @@ export function ConnectedAgents({ openToken }: { openToken?: boolean }) {
       {showList && (
         <div className="min-w-0 flex-1 overflow-y-auto">
           <div className="flex flex-col gap-4 px-4 pb-32 pt-2 md:px-6 md:pb-10 md:pt-7">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1">
-                <h1 className="text-title text-ink">Connected agents</h1>
-                <p className="mt-1 max-w-[420px] text-sm text-ink-muted">
-                  Each agent holds one grant. Edits apply on its next MCP call; revoking kills both tokens at once.
-                </p>
-              </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <h1 className="min-w-0 flex-1 text-title text-ink">Connected agents</h1>
               <Button icon={<Plus />} onClick={() => setTokenOpen(true)} className="self-start sm:self-auto">
                 Personal access token
               </Button>
@@ -158,12 +153,11 @@ export function ConnectedAgents({ openToken }: { openToken?: boolean }) {
               <div className="overflow-hidden rounded-lg border border-edge" role="table">
                 <div
                   role="row"
-                  className="hidden h-8 grid-cols-[minmax(0,1fr)_84px_92px_80px_72px] items-center gap-2 border-b border-edge px-3 text-label text-ink-subtle md:grid"
+                  className="hidden h-8 grid-cols-[minmax(0,1fr)_100px_100px_72px] items-center gap-2 border-b border-edge px-3 text-label text-ink-subtle md:grid"
                 >
                   <span>Agent</span>
                   <span>Projects</span>
                   <span>Level</span>
-                  <span>Last used</span>
                   <span>Expires</span>
                 </div>
                 <div className="divide-y divide-edge">
@@ -175,7 +169,7 @@ export function ConnectedAgents({ openToken }: { openToken?: boolean }) {
                       onClick={() => select(g.id)}
                       onMouseMove={() => cursor !== i && setCursor(i)}
                       className={cn(
-                        "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-left outline-none md:h-[52px] md:grid-cols-[minmax(0,1fr)_84px_92px_80px_72px] md:gap-2 md:py-0",
+                        "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 text-left outline-none md:h-[52px] md:grid-cols-[minmax(0,1fr)_100px_100px_72px] md:gap-2 md:py-0",
                         id === g.id ? "bg-state-selected" : cursor === i && "bg-state-hover",
                         g.status !== "active" && "opacity-50",
                       )}
@@ -194,18 +188,12 @@ export function ConnectedAgents({ openToken }: { openToken?: boolean }) {
                       </span>
                       <span className="hidden truncate text-label font-medium text-ink-muted md:block">{projectsLabel(g)}</span>
                       <span className="hidden truncate text-label text-ink-muted md:block">{levelLabel(g)}</span>
-                      <span className="hidden truncate text-label text-ink-muted md:block">{g.lastUsedAt ? ago(g.lastUsedAt, { long: true }) : "—"}</span>
                       <span className="hidden truncate text-label text-ink-muted md:block">{expiresLabel(g)}</span>
                     </button>
                   ))}
                 </div>
               </div>
             )}
-
-            <p className="flex items-start gap-2 text-label text-ink-subtle">
-              <ShieldCheck className="mt-px size-4 shrink-0" />
-              A grant never exceeds your own rights. Missing privileges return insufficient_scope — agents ask, they never escalate.
-            </p>
           </div>
         </div>
       )}
@@ -443,7 +431,7 @@ function Activity({ grantId }: { grantId: string }) {
   return (
     <section className="flex flex-col gap-3 px-5 py-4">
       <h3 className="text-sm font-medium text-ink">
-        Activity <span className="ml-1 text-label font-normal text-ink-subtle">audit log, this agent only</span>
+        Activity
       </h3>
       {sessions.isPending ? (
         <Spinner className="my-4 self-center" />

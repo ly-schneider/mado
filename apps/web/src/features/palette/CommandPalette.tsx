@@ -1,13 +1,12 @@
 import type { SearchResults } from "@mado/contract";
 import { STATUS_LABEL, STAGE_LABEL } from "@mado/contract";
-import { cn, Dialog, Kbd } from "@mado/ui";
+import { Dialog, Kbd } from "@mado/ui";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Command as Cmdk } from "cmdk";
-import { ArrowDown, ArrowUp, Briefcase, CircleCheck, CornerDownLeft, FileText, History, Search } from "lucide-react";
+import { Briefcase, CircleCheck, CornerDownLeft, FileText, History, Search } from "@mado/ui/fluent";
 import { type ReactNode, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { orpc } from "../../lib/orpc";
-import { modKey } from "../../lib/platform";
 import { type Command, useCommandList } from "../../lib/shortcuts";
 import { getRecent, pushRecent, setUi, useUi } from "../../lib/ui";
 import { useWorkspace } from "../../lib/workspace";
@@ -126,7 +125,6 @@ export function CommandPalette() {
   const runCommand = (c: Command) => go(() => c.run());
 
   const show = (f: Filter) => filter === "all" || filter === f;
-  const ms = search.isFetching ? null : results?.ms;
 
   return (
     <Dialog open={open} onOpenChange={(o) => setUi({ paletteOpen: o })} position="top" title="Command palette" className="max-w-[640px]">
@@ -236,25 +234,6 @@ export function CommandPalette() {
             </Group>
           )}
         </Cmdk.List>
-        <div className="flex h-10 shrink-0 items-center gap-4 border-t border-edge px-4 text-label text-ink-subtle max-md:hidden">
-          <span className="flex items-center gap-1">
-            <Kbd>
-              <ArrowUp className="size-3" />
-            </Kbd>
-            <Kbd>
-              <ArrowDown className="size-3" />
-            </Kbd>
-            <span className="ml-1">navigate</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Kbd>↵</Kbd> open
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Kbd>tab</Kbd> filter by type
-          </span>
-          <span className={cn("ml-auto tabular-nums")}>{ms !== undefined && ms !== null ? `${ms} ms` : ""}</span>
-          <span className="sr-only">{modKey}</span>
-        </div>
       </Cmdk>
     </Dialog>
   );
