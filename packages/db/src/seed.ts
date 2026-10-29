@@ -1004,6 +1004,8 @@ if (refRows.length) await db.insert(s.refs).values(refRows).onConflictDoNothing(
 auditRows.sort((a, b) => a.createdAt!.getTime() - b.createdAt!.getTime());
 for (let i = 0; i < revisionRows.length; i += 500) await db.insert(s.revisions).values(revisionRows.slice(i, i + 500));
 for (let i = 0; i < auditRows.length; i += 500) await db.insert(s.auditLog).values(auditRows.slice(i, i + 500));
+// Empty parent pages (Architecture, Decisions, Runbooks) are folders.
+await client`UPDATE docs d SET kind = 'folder' WHERE btrim(d.content) = '' AND EXISTS (SELECT 1 FROM docs c WHERE c.parent_id = d.id)`;
 await db
   .insert(s.settings)
   .values({ key: "seed.at", value: new Date().toISOString() })

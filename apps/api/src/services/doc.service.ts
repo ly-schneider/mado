@@ -97,6 +97,7 @@ export class DocService {
     const parents = new Set(rows.map((r) => r.parentId).filter(Boolean));
     return rows.map((r) => ({
       id: r.id,
+      kind: r.kind,
       title: r.title,
       parentId: r.parentId,
       projectId: r.projectId,
@@ -165,6 +166,7 @@ export class DocService {
 
     return {
       id: doc.id,
+      kind: doc.kind,
       workspaceId: doc.workspaceId,
       projectId: doc.projectId,
       parentId: guest && doc.id === guest.rootDocId ? null : doc.parentId,
@@ -260,7 +262,15 @@ export class DocService {
 
   async create(
     actor: Actor,
-    input: { workspaceId: string; projectId?: string | null; parentId?: string | null; title: string; content: string; clientId?: string },
+    input: {
+      workspaceId: string;
+      projectId?: string | null;
+      parentId?: string | null;
+      kind?: "page" | "folder";
+      title: string;
+      content: string;
+      clientId?: string;
+    },
   ): Promise<DocNode> {
     if (input.clientId) {
       const [existing] = await this.db.select({ id: docs.id }).from(docs).where(eq(docs.id, input.clientId));
@@ -277,7 +287,9 @@ export class DocService {
     } else {
       await this.requireContainer(actor, input.workspaceId, projectId);
     }
-    const title = input.title.trim() || "Untitled";
+    const kind = input.kind ?? "page";
+    const title = input.title.trim() || (kind === "folder" ? "New folder" : "Untitled");
+    const content = kind === "folder" ? "" : input.content;
 
     const id = await this.db.transaction(async (tx) => {
       const [last] = await tx
@@ -298,8 +310,9 @@ export class DocService {
           workspaceId: input.workspaceId,
           projectId,
           parentId: input.parentId ?? null,
+          kind,
           title,
-          content: input.content,
+          content,
           sortOrder: (last?.m ?? 0) + 1,
           updatedByType: actor.type,
           updatedById: actorId(actor),
@@ -308,12 +321,12 @@ export class DocService {
       const number = await this.audit.revision(tx, actor, {
         entityType: "doc",
         entityId: row!.id,
-        snapshot: { title, content: input.content },
-        ...diffStats("", input.content),
-        summary: "Created",
+        snapshot: { title, content },
+        ...diffStats("", content),
+        summary: kind === "folder" ? "Created folder" : "Created",
       });
       await tx.update(docs).set({ revisionNumber: number }).where(eq(docs.id, row!.id));
-      await this.refs.rebuild(tx, { type: "doc", id: row!.id, workspaceId: input.workspaceId }, input.content);
+      await this.refs.rebuild(tx, { type: "doc", id: row!.id, workspaceId: input.workspaceId }, content);
       await this.relinkTitle(tx, input.workspaceId, title);
       await this.audit.record(tx, actor, {
         workspaceId: input.workspaceId,
@@ -322,7 +335,7 @@ export class DocService {
         entityType: "doc",
         entityId: row!.id,
         entityLabel: title,
-        after: { title, parentId: row!.parentId },
+        after: { title, kind, parentId: row!.parentId },
       });
       return row!.id;
     });

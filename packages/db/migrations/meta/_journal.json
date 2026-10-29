@@ -22,6 +22,13 @@
       "when": 1793311009608,
       "tag": "0002_accent_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793313721192,
+      "tag": "0003_doc_kind",
+      "breakpoints": true
     }
   ]
 }

@@ -184,8 +184,11 @@ export interface TaskDraft {
   model: string;
 }
 
+export type DocKind = "page" | "folder";
+
 export interface DocNode {
   id: string;
+  kind: DocKind;
   title: string;
   parentId: string | null;
   projectId: string | null;
@@ -205,6 +208,7 @@ export interface Backlink {
 
 export interface Doc {
   id: string;
+  kind: DocKind;
   workspaceId: string;
   projectId: string | null;
   parentId: string | null;

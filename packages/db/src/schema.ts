@@ -272,6 +272,8 @@ export const docs = pgTable(
       .references(() => workspaces.id),
     projectId: uuid("project_id").references(() => projects.id), // null = workspace-level page
     parentId: uuid("parent_id"),
+    /** Folders only group pages; they have no content of their own. Pages may also have sub-pages. */
+    kind: text("kind").$type<"page" | "folder">().notNull().default("page"),
     title: text("title").notNull().default("Untitled"),
     content: text("content").notNull().default(""),
     sortOrder: doublePrecision("sort_order").notNull().default(0),

@@ -166,7 +166,7 @@ function renderTree(nodes: DocNode[]) {
   const lines: string[] = [];
   const walk = (parent: string | null, depth: number) => {
     for (const n of (byParent.get(parent) ?? []).sort((a, b) => a.sortOrder - b.sortOrder)) {
-      lines.push(`${"  ".repeat(depth)}- ${n.title} (id: ${n.id})`);
+      lines.push(`${"  ".repeat(depth)}- ${n.title}${n.kind === "folder" ? "/" : ""} (id: ${n.id})`);
       walk(n.id, depth + 1);
     }
   };
@@ -408,9 +408,10 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
 
   tool(
     "create_doc",
-    "Create a wiki page in a project. Content is Markdown; link other pages with [[Page title]] and tasks with their key (GAT-109).",
+    "Create a wiki page or folder in a project. Content is Markdown; link other pages with [[Page title]] and tasks with their key (GAT-109). Folders only group pages and other folders, nested to any depth; they have no content.",
     {
       project: projectKey,
+      kind: z.enum(["page", "folder"]).optional().describe("Defaults to page"),
       title: z.string().min(1).max(200),
       content: z.string().max(1_000_000).optional(),
       parent: docRef.optional().describe("Parent page id or title"),
@@ -422,6 +423,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
         workspaceId: p.workspaceId,
         projectId: p.id,
         parentId: args.parent ? await resolveDoc(ctx, args.parent, args.project) : null,
+        kind: args.kind ?? "page",
         title: args.title,
         content: args.content ?? "",
       });
