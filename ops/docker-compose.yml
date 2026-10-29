@@ -1,0 +1,49 @@
+# Production deployment: the API (serves the SPA, oRPC, MCP and webhooks) and Postgres. Nothing else.
+# cloudflared runs on the VM itself and points the tunnel at 127.0.0.1:4100 (see ops/cloudflare.md).
+#   cp .env.example ops/.env   # fill in the secrets
+#   docker compose -f ops/docker-compose.yml --env-file ops/.env up -d --build
+name: mado
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mado_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: mado
+      MADO_APP_PASSWORD: ${MADO_APP_PASSWORD:?set MADO_APP_PASSWORD}
+      MADO_PURGE_PASSWORD: ${MADO_PURGE_PASSWORD:?set MADO_PURGE_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mado_owner -d mado"]
+      interval: 5s
+      retries: 20
+    shm_size: 256mb
+
+  api:
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+    image: mado:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4100
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL}
+      MADO_SECRET_KEY: ${MADO_SECRET_KEY:?set MADO_SECRET_KEY}
+      DATABASE_OWNER_URL: postgres://mado_owner:${POSTGRES_PASSWORD}@postgres:5432/mado
+      DATABASE_URL: postgres://mado_app:${MADO_APP_PASSWORD}@postgres:5432/mado
+      DATABASE_PURGE_URL: postgres://mado_purge:${MADO_PURGE_PASSWORD}@postgres:5432/mado
+      JOBS: ${JOBS:-on}
+    # Loopback only: the Cloudflare Tunnel is the one way in.
+    ports:
+      - "127.0.0.1:4100:4100"
+
+volumes:
+  pgdata:

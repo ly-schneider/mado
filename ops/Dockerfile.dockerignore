@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.turbo
+**/*.log
+.git
+.env
+.env.*
+!.env.example
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/gen
+backups
+design
