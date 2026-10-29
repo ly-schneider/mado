@@ -11,7 +11,7 @@ export const inboxRouter = (s: Services) => ({
     return ok;
   }),
   archive: authed.inbox.archive.handler(async ({ input, context }) => {
-    await s.inbox.archive(context.actor, input.ids);
+    await s.inbox.archive(context.actor, input.ids, input.archived);
     return ok;
   }),
 });

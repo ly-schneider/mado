@@ -189,7 +189,7 @@ export class InboxService {
       .where(and(eq(notifications.userId, user.userId), inArray(notifications.id, ids)));
   }
 
-  async archive(actor: Actor, ids: string[]) {
+  async archive(actor: Actor, ids: string[], archived = true) {
     const user = this.access.requireUser(actor);
     if (ids.length === 0) return;
     const now = new Date();
@@ -198,6 +198,10 @@ export class InboxService {
       .from(notifications)
       .where(and(eq(notifications.userId, user.userId), inArray(notifications.id, ids)));
     if (rows.length === 0) return;
+    if (!archived) {
+      await this.dbs.db.update(notifications).set({ archivedAt: null }).where(inArray(notifications.id, rows.map((r) => r.id)));
+      return;
+    }
     await this.dbs.db
       .update(notifications)
       .set({ archivedAt: now })

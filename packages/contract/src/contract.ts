@@ -168,6 +168,7 @@ export const contract = {
           workspaceId: uuid,
           projectId: uuid.nullable().optional(),
           parentId: uuid.nullable().optional(),
+          kind: z.enum(["page", "folder"]).default("page"),
           title: z.string().trim().max(200).default("Untitled"),
           content: z.string().max(1_000_000).default(""),
           clientId: uuid.optional(),
@@ -306,7 +307,8 @@ export const contract = {
     list: oc.input(z.object({ workspaceId: uuid.optional(), archived: z.boolean().default(false) })).output(type<T.Notification[]>()),
     unread: oc.output(type<{ count: number }>()),
     markRead: oc.input(z.object({ ids: z.array(uuid), read: z.boolean().default(true) })).output(ok),
-    archive: oc.input(z.object({ ids: z.array(uuid) })).output(ok),
+    /** archived: false moves notifications back to the inbox. */
+    archive: oc.input(z.object({ ids: z.array(uuid), archived: z.boolean().default(true) })).output(ok),
   },
 
   crm: {
