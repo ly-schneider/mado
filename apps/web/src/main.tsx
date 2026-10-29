@@ -22,3 +22,13 @@ if ("serviceWorker" in navigator && import.meta.env.PROD && !("__TAURI_INTERNALS
 
 const idle = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500));
 idle(preloadEditor);
+
+// Right-click opens our menu where one exists and does nothing elsewhere. The browser's menu stays where
+// it helps: text fields and the editor (spellcheck, paste) and selected text (copy).
+document.addEventListener("contextmenu", (e) => {
+  if (e.defaultPrevented) return;
+  const target = e.target as HTMLElement | null;
+  if (target?.closest("input, textarea, select, [contenteditable='true'], .cm-editor")) return;
+  if (window.getSelection()?.toString()) return;
+  e.preventDefault();
+});
