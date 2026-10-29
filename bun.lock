@@ -38,7 +38,7 @@
       "name": "@mado/desktop",
       "version": "0.1.0",
       "devDependencies": {
-        "@tauri-apps/cli": "^2",
+        "@tauri-apps/cli": "^2.12.4",
       },
     },
     "apps/web": {
@@ -68,7 +68,6 @@
         "cmdk": "^1.1.1",
         "fflate": "^0.8.3",
         "idb-keyval": "^6.2.1",
-        "lucide-react": "^1.64.0",
         "react": "^19.3.1",
         "react-dom": "^19.3.1",
         "tinykeys": "^4.0.1",
@@ -108,7 +107,6 @@
         "@base-ui/react": "^1.9.0",
         "@mado/contract": "workspace:*",
         "clsx": "^2.1.1",
-        "lucide-react": "^1.64.0",
         "tailwind-merge": "^3.5.0",
       },
       "devDependencies": {
@@ -729,8 +727,6 @@
     "lightningcss-win32-x64-msvc": ["lightningcss-win32-x64-msvc@1.33.0", "", { "os": "win32", "cpu": "x64" }, "sha512-OlEICDx/Xl0FqSp4bry8zFnCvGpig3Gl4gCquvYwHuqJKEC1+n9NgDniFvqHGmMv1ZkqDJrDqKKSykTDX+ehuA=="],
 
     "load-esm": ["load-esm@1.0.3", "", {}, "sha512-v5xlu8eHD1+6r8EHTg6hfmO97LN8ugKtiXcy5e6oN72iD2r6u0RPfLl6fxM+7Wnh2ZRq15o0russMst44WauPA=="],
-
-    "lucide-react": ["lucide-react@1.64.0", "", { "peerDependencies": { "@types/react": "*", "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react"] }, "sha512-v626F/bcLNvFom6vzztHILtG9tUgXXbgA5AGkd82YkV401+Ko/NHyrWafbPwGofa+6p/EgDJcvEkIwsMH9098w=="],
 
     "luxon": ["luxon@3.7.2", "", {}, "sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew=="],
 
