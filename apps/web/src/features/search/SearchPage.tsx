@@ -1,7 +1,7 @@
 import { STAGE_LABEL, STATUS_LABEL } from "@mado/contract";
-import { cn, StatusIcon } from "@mado/ui";
+import { Chips, cn, StatusIcon } from "@mado/ui";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Briefcase, FileText, History, Search, X } from "@mado/ui/fluent";
 import { type ReactNode, useDeferredValue, useEffect, useRef, useState } from "react";
 import { orpc } from "../../lib/orpc";
@@ -10,6 +10,7 @@ import { ago } from "../../lib/time";
 import { getRecent, pushRecent } from "../../lib/ui";
 import { useWorkspace } from "../../lib/workspace";
 import { Highlight } from "../palette/CommandPalette";
+import { MobileTitle, PageHeader } from "../shell/PageHeader";
 
 type Filter = "all" | "tasks" | "docs" | "leads";
 const FILTERS: { value: Filter; label: string }[] = [
@@ -19,10 +20,9 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "leads", label: "Leads" },
 ];
 
-/** iOS 35:351. On wider screens the same page, centred. */
+/** iOS 35:351. On wider screens the same page, centred under the header. */
 export function SearchPage() {
   const ws = useWorkspace();
-  const router = useRouter();
   const navigate = useNavigate({ from: "/$ws/search" });
   const search = useSearch({ from: "/$ws/search" });
   const [q, setQ] = useState(search.q ?? "");
@@ -96,21 +96,18 @@ export function SearchPage() {
       </button>
     );
   };
-  const groupTitle = (label: string, count: number) => (
-    <div className="flex h-8 items-center gap-2 px-4 pt-2 text-label md:px-3">
-      <span className="font-medium text-ink-muted">{label}</span>
-      <span className="text-ink-subtle">{count}</span>
-    </div>
-  );
+  const groupTitle = (label: string) => <div className="flex h-8 items-end px-4 pb-1 text-label font-medium text-ink-subtle md:px-3">{label}</div>;
   const snippet = (s: string | null) => (s ? <>“<Highlight text={s} query={deferred} />”</> : null);
   const recentQueries = recent.filter((r) => r.type === "query").slice(0, 6);
   const empty = data && data.tasks.length + data.docs.length + data.leads.length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="mx-auto flex w-full max-w-[720px] shrink-0 flex-col gap-3 px-4 pb-3 pt-[max(env(safe-area-inset-top),12px)] md:pt-8">
+      <PageHeader crumbs={[{ label: "Search" }]} />
+      <MobileTitle title="Search" />
+      <div className="mx-auto flex w-full max-w-[720px] shrink-0 flex-col gap-3 px-4 pb-3 md:pt-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-touch flex-1 items-center gap-2 rounded-lg border border-accent bg-panel px-3 md:h-10">
+          <div className="flex h-touch flex-1 items-center gap-2 rounded-lg border border-edge bg-panel px-3 focus-within:border-accent md:h-10">
             <Search className="size-4 shrink-0 text-ink-subtle" />
             <input
               ref={inputRef}
@@ -140,44 +137,26 @@ export function SearchPage() {
               </button>
             )}
           </div>
-          <button type="button" onClick={() => router.history.back()} className="h-11 text-touch text-ink-muted md:hidden">
-            Cancel
-          </button>
         </div>
-        <div className="flex gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setFilter(f.value)}
-              className={cn(
-                "h-8 rounded-full border border-edge px-3.5 text-sm font-medium text-ink-muted",
-                filter === f.value && "border-transparent bg-state-selected text-ink",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        <Chips value={filter} onChange={setFilter} options={FILTERS} />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-32">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-36 md:pb-8">
         <div className="mx-auto w-full max-w-[720px] md:px-1">
           {!deferred && (
             <>
-              {recentQueries.length > 0 && groupTitle("Recent", recentQueries.length)}
+              {recentQueries.length > 0 && groupTitle("Recent")}
               {recentQueries.map((r) => (
                 <button key={r.id} type="button" onClick={() => setQ(r.ref)} className="flex h-11 w-full items-center gap-3 px-4 text-left text-base text-ink active:bg-state-active md:px-3">
                   <History className="size-4 text-ink-subtle" />
                   {r.title}
                 </button>
               ))}
-              {recentQueries.length === 0 && <p className="px-4 py-10 text-center text-sm text-ink-subtle">Search titles and content in German and English.</p>}
             </>
           )}
           {data && data.tasks.length > 0 && (
             <section>
-              {groupTitle("Tasks", data.tasks.length)}
+              {groupTitle("Tasks")}
               {data.tasks.map((t) =>
                 row(
                   t.id,
@@ -193,7 +172,7 @@ export function SearchPage() {
           )}
           {data && data.docs.length > 0 && (
             <section>
-              {groupTitle("Docs", data.docs.length)}
+              {groupTitle("Docs")}
               {data.docs.map((d) =>
                 row(
                   d.id,
@@ -209,7 +188,7 @@ export function SearchPage() {
           )}
           {data && data.leads.length > 0 && (
             <section>
-              {groupTitle("Leads", data.leads.length)}
+              {groupTitle("Leads")}
               {data.leads.map((l) =>
                 row(
                   l.id,

@@ -1,7 +1,7 @@
 import type { TaskStatus, TaskSummary } from "@mado/contract";
 import { Button, cn, EmptyState, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Plus, SquareKanban } from "@mado/ui/fluent";
+import { Plus } from "@mado/ui/fluent";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TaskView } from "../../router";
 import { useCommands } from "../../lib/shortcuts";
@@ -105,7 +105,7 @@ export function TasksPage() {
   useTaskHotkeys(() => focused, { onDeleted: () => move(1) }, [focused]);
 
   if (!project) {
-    return <EmptyState icon={<SquareKanban />} title="Project not found">There is no project with the key {key} in this workspace.</EmptyState>;
+    return <EmptyState title={`No project ${key}`} />;
   }
 
   return (
@@ -122,14 +122,14 @@ export function TasksPage() {
             ]}
           />
         }
-        mobileActions={null}
+        mobileLabel={project.name}
       >
         <FilterMenu projectId={project.id} filters={filters} onChange={setFilters} open={addOpen} onOpenChange={setAddOpen} />
         <Button variant="primary" icon={<Plus />} kbd="C" onClick={() => create()}>
           New task
         </Button>
       </PageHeader>
-      <MobileTitle title={project.name} subtitle={`${filtered.filter((t) => t.status !== "done" && t.status !== "canceled").length} open`} />
+      <MobileTitle title="Tasks" subtitle={`${filtered.filter((t) => t.status !== "done" && t.status !== "canceled").length} open`} />
       <FilterBar projectId={project.id} filters={filters} onChange={setFilters} />
 
       {tasks.isPending && !tasks.data ? (
@@ -145,7 +145,8 @@ export function TasksPage() {
               <ListView columns={columns} focusId={focusId} onOpen={open} onCreate={create} onFocus={setFocusId} />
             )}
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto pb-32 md:hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto pb-36 md:hidden">
+            {filtered.length === 0 && <p className="px-4 py-10 text-center text-sm text-ink-subtle">No tasks</p>}
             {ACTIVE_FIRST.filter((s) => s !== "canceled").map((s) => {
               const list = groups.get(s) ?? [];
               if (!list.length) return null;
@@ -291,9 +292,7 @@ function ListView({ columns, focusId, onOpen }: ViewProps) {
   if (columns.length === 0) {
     return (
       <div className="flex-1">
-        <EmptyState icon={<SquareKanban />} title="No tasks match">
-          Change the filters or press C to create a task.
-        </EmptyState>
+        <EmptyState title="No tasks match" />
       </div>
     );
   }

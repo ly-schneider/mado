@@ -9,7 +9,7 @@ import { orpc } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
 import { pushRecent } from "../../lib/ui";
 import { useMe, useProjectForTaskKey, useWorkspace } from "../../lib/workspace";
-import { PageHeader } from "../shell/PageHeader";
+import { MobileNavTitle, PageHeader } from "../shell/PageHeader";
 import { ACTIVE_FIRST, branchName, copyText, deleteTask, findCachedTaskByKey, groupByStatus, shortSession, STATUS_LABEL, taskUrl, updateTask, useProjectTasks, noOverlay, docLabel } from "./data";
 import { applyToTask, PickerHost, PickerPopover, useTaskHotkeys } from "./pickers";
 import { Activity, CommentCard, CommentComposer, Description, EditableTitle, Linked, postComment, RevertSessionDialog } from "./TaskDetailParts";
@@ -80,7 +80,7 @@ export function TaskPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PageHeader crumbs={crumbs} className="max-md:hidden">
+      <PageHeader crumbs={crumbs} mobile={false}>
         <div className="flex items-center">
           <IconButton label="Copy link" size="sm" onClick={() => summary && copyText(taskUrl(ws.slug, summary.key), "link")}>
             <Link2 />
@@ -208,9 +208,9 @@ function EpicChildren({ tasks }: { tasks: TaskSummary[] }) {
           {done} of {tasks.length} done
         </span>
       </div>
-      <div className="divide-y divide-edge overflow-hidden rounded-lg border border-edge">
+      <div className="-mx-2">
         {tasks.map((t) => (
-          <Link key={t.id} to="/$ws/t/$taskKey" params={{ ws: ws.slug, taskKey: t.key }} className="flex h-9 items-center gap-2.5 px-3 text-sm hover:bg-state-hover">
+          <Link key={t.id} to="/$ws/t/$taskKey" params={{ ws: ws.slug, taskKey: t.key }} className="flex h-9 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-state-hover">
             <StatusIcon status={t.status} />
             <span className="w-16 shrink-0 text-label text-ink-subtle">{t.key}</span>
             <span className="min-w-0 flex-1 truncate text-ink">{t.title}</span>
@@ -304,10 +304,11 @@ function TaskPhone({ task, detail, branch }: { task: TaskSummary; detail?: TaskD
   const round = "inline-flex size-9 items-center justify-center rounded-full border border-edge bg-raised text-ink-muted active:bg-state-active [&_svg]:size-[18px]";
   return (
     <div className="flex min-h-0 flex-1 flex-col md:hidden">
-      <div className="flex h-[52px] shrink-0 items-center gap-2 px-4 pt-safe">
+      <div className="relative flex h-[52px] shrink-0 items-center gap-2 px-4 pt-safe">
         <button type="button" aria-label="Back" onClick={() => router.history.back()} className={round}>
           <ChevronLeft />
         </button>
+        <MobileNavTitle>Tasks</MobileNavTitle>
         <div className="flex-1" />
         <button type="button" aria-label="Share" onClick={share} className={round}>
           <Share />

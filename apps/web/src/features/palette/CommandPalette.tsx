@@ -62,6 +62,9 @@ function Group({ heading, children }: { heading: string; children: ReactNode }) 
   );
 }
 
+/** Commands that open this palette; listing them inside it is noise. */
+const SELF = new Set(["palette", "search.slash"]);
+
 export function CommandPalette() {
   const open = useUi((s) => s.paletteOpen);
   const initial = useUi((s) => s.paletteQuery);
@@ -92,7 +95,7 @@ export function CommandPalette() {
 
   const actions = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = commands.filter((c) => !c.id.startsWith("list.") && (!c.when || c.when()));
+    const list = commands.filter((c) => !c.id.startsWith("list.") && !SELF.has(c.id) && (!c.when || c.when()));
     const seen = new Set<string>();
     const unique = list.filter((c) => (seen.has(c.title) ? false : (seen.add(c.title), true)));
     if (!q) return unique.filter((c) => c.group === "Actions").slice(0, 4);
@@ -151,8 +154,6 @@ export function CommandPalette() {
             className="h-full min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-ink-faint max-md:text-touch"
           />
           {filter !== "all" && <span className="rounded-md bg-state-selected px-2 py-0.5 text-label font-medium capitalize text-ink">{filter}</span>}
-          <span className="rounded-md border border-edge px-2 py-0.5 text-label text-ink-muted">{ws.name}</span>
-          <Kbd>esc</Kbd>
         </div>
         <Cmdk.List className="min-h-0 flex-1 overflow-y-auto p-2">
           <Cmdk.Empty className="px-3 py-6 text-center text-sm text-ink-subtle">

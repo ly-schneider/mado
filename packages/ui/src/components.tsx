@@ -275,6 +275,39 @@ export function Segmented<T extends string>({
   );
 }
 
+/** Rounded filter chips (Inbox, Search): one is always selected. */
+export function Chips<T extends string>({
+  value,
+  onChange,
+  options,
+  className,
+}: {
+  value: T;
+  onChange: (value: T) => void;
+  options: { value: T; label: React.ReactNode }[];
+  className?: string;
+}) {
+  return (
+    <div role="tablist" className={cn("flex shrink-0 gap-2 overflow-x-auto", className)}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="tab"
+          aria-selected={value === o.value}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "h-8 shrink-0 rounded-full border border-edge px-3.5 text-sm font-medium text-ink-muted outline-none hover:text-ink focus-visible:border-accent",
+            value === o.value && "border-transparent bg-state-selected text-ink",
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Inputs ──────────────────────────────────────────────────────────────
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement> & { icon?: React.ReactNode; touch?: boolean }>(

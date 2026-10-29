@@ -3,14 +3,14 @@ import { PRIORITY_LABEL } from "@mado/contract";
 import { EmptyState, IconButton, Menu, PriorityIcon, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { ArrowUpRight, Bell, Calendar, ChevronDown, CircleCheck, FileText, GitBranch, Link2, ListFilter, PanelRight } from "@mado/ui/fluent";
+import { ArrowUpRight, Calendar, FileText, GitBranch, Link2, ListFilter, PanelRight } from "@mado/ui/fluent";
 import { useEffect, useMemo, useState } from "react";
 import { orpc } from "../../lib/orpc";
 import { useCommands } from "../../lib/shortcuts";
 import { dueLabel } from "../../lib/time";
 import { pushRecent } from "../../lib/ui";
-import { useMe, useWorkspace, workspaceInitials } from "../../lib/workspace";
-import { MobileTitle } from "../shell/PageHeader";
+import { useWorkspace } from "../../lib/workspace";
+import { MobileTitle, PageHeader } from "../shell/PageHeader";
 import { ACTIVE_FIRST, branchName, copyText, groupByStatus, STATUS_LABEL, taskUrl, useIsPhone, noOverlay, docLabel } from "./data";
 import { Description } from "./TaskDetailParts";
 import { applyToTask, PickerHost, PickerPopover, useTaskHotkeys } from "./pickers";
@@ -76,17 +76,11 @@ export function MyTasksPage() {
 
   const inWorkspace = (query.data ?? []).filter((t) => projectIds.has(t.projectId));
   const openCount = inWorkspace.filter((t) => t.status !== "done" && t.status !== "canceled").length;
-  const reviewCount = inWorkspace.filter((t) => t.status === "in_review").length;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="hidden min-h-0 flex-1 md:flex">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-[52px] shrink-0 items-center gap-3 border-b border-edge pl-5 pr-3">
-            <h1 className="text-base font-semibold text-ink">My tasks</h1>
-            <span className="text-sm text-ink-subtle">{tasks.length}</span>
-            <div className="flex-1" />
-            <Segmented
+      <PageHeader crumbs={[{ label: "My tasks" }]}>
+        <Segmented
               value={tab}
               onChange={(v) => navigate({ search: (s) => ({ ...s, tab: v === "assigned" ? undefined : v }), replace: true })}
               options={[
@@ -105,16 +99,16 @@ export function MyTasksPage() {
                 </Menu.Item>
               </Menu.Popup>
             </Menu.Root>
-          </header>
+      </PageHeader>
+      <div className="hidden min-h-0 flex-1 md:flex">
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto pb-8">
             {query.isPending && !query.data ? (
               <div className="flex justify-center py-16">
                 <Spinner />
               </div>
             ) : sections.length === 0 ? (
-              <EmptyState icon={<CircleCheck />} title={tab === "agents" ? "No tasks with agents" : "Nothing on your plate"}>
-                {tab === "agents" ? "Tasks assigned to a connected agent show up here." : "Press C to capture a task."}
-              </EmptyState>
+              <EmptyState title={tab === "agents" ? "No tasks with agents" : "Nothing on your plate"} />
             ) : (
               sections.map((g) => (
                 <section key={g.status}>
@@ -135,7 +129,7 @@ export function MyTasksPage() {
         setTab={setPhoneTab}
         sections={sections}
         loading={query.isPending && !query.data}
-        subtitle={`${openCount} open${reviewCount ? ` · ${reviewCount} in review` : ""}`}
+        subtitle={`${openCount} open`}
         onOpen={open}
       />
 
@@ -152,7 +146,7 @@ function DetailPane({ task, onClose, onOpen }: { task: TaskSummary; onClose: () 
   const due = dueLabel(task.dueDate);
   return (
     <aside className="flex w-[400px] shrink-0 flex-col border-l border-edge xl:w-[440px]">
-      <div className="flex h-[52px] shrink-0 items-center gap-1 px-5">
+      <div className="flex h-11 shrink-0 items-center gap-1 px-5">
         <span className="flex-1 text-sm text-ink-subtle">{task.key}</span>
         <IconButton label="Open in full (↵)" size="sm" onClick={onOpen}>
           <ArrowUpRight />
@@ -209,15 +203,15 @@ function DetailPane({ task, onClose, onOpen }: { task: TaskSummary; onClose: () 
             <div className="mt-5 text-sm">
               <Description task={d} />
             </div>
-            <div className="mt-5 divide-y divide-edge overflow-hidden rounded-lg border border-edge">
+            <div className="-mx-2 mt-5">
               {d.linkedDocs.map((doc) => (
-                <Link key={doc.id} to="/$ws/wiki/$docId" params={{ ws: ws.slug, docId: doc.id }} className="flex h-9 items-center gap-2.5 px-3 text-sm hover:bg-state-hover">
+                <Link key={doc.id} to="/$ws/wiki/$docId" params={{ ws: ws.slug, docId: doc.id }} className="flex h-9 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-state-hover">
                   <FileText className="size-4 shrink-0 text-ink-subtle" />
                   <span className="min-w-0 flex-1 truncate text-ink">{docLabel(doc)}</span>
                   <span className="text-label text-ink-subtle">doc</span>
                 </Link>
               ))}
-              <button type="button" onClick={() => copyText(d.branch ?? branchName(task.key, task.title), "branch name")} className="flex h-9 w-full items-center gap-2.5 px-3 text-left text-sm hover:bg-state-hover">
+              <button type="button" onClick={() => copyText(d.branch ?? branchName(task.key, task.title), "branch name")} className="flex h-9 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm hover:bg-state-hover">
                 <GitBranch className="size-4 shrink-0 text-ink-subtle" />
                 <span className="min-w-0 flex-1 truncate font-medium text-ink">{d.branch ?? branchName(task.key, task.title)}</span>
                 <span className="text-label text-ink-subtle">
@@ -252,23 +246,8 @@ function MyTasksPhone({
   subtitle: string;
   onOpen: (t: TaskSummary) => void;
 }) {
-  const ws = useWorkspace();
-  const me = useMe().data;
-  const navigate = useNavigate();
-  const { data: unread } = useQuery(orpc.inbox.unread.queryOptions());
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto pb-32 md:hidden">
-      <div className="flex h-[52px] items-center justify-between px-4 pt-safe">
-        <button type="button" onClick={() => navigate({ to: "/$ws/settings/$section", params: { ws: ws.slug, section: "workspace" } })} className="flex h-9 items-center gap-2 rounded-full border border-edge bg-raised pl-1.5 pr-3 text-sm font-medium text-ink">
-          <span className="flex size-6 items-center justify-center rounded-full bg-ink text-[10px] font-medium text-on-ink">{workspaceInitials(ws.name)}</span>
-          {ws.name}
-          <ChevronDown className="size-3.5 text-ink-subtle" />
-        </button>
-        <Link to="/$ws/inbox" params={{ ws: ws.slug }} aria-label="Inbox" className="relative flex size-9 items-center justify-center rounded-full border border-edge bg-raised text-ink-muted">
-          <Bell className="size-[18px]" />
-          {!!unread?.count && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-accent" />}
-        </Link>
-      </div>
+    <div className="min-h-0 flex-1 overflow-y-auto pb-36 md:hidden">
       <MobileTitle title="My tasks" subtitle={subtitle} />
       <div className="px-4 pb-3">
         <Segmented
@@ -287,9 +266,7 @@ function MyTasksPhone({
           <Spinner />
         </div>
       ) : sections.length === 0 ? (
-        <EmptyState icon={<CircleCheck />} title="All clear">
-          {me ? `Nothing ${tab === "today" ? "due today" : "open"}, ${me.name.split(" ")[0]}.` : null}
-        </EmptyState>
+        <p className="px-4 py-10 text-center text-sm text-ink-subtle">{tab === "today" ? "Nothing due today" : "Nothing open"}</p>
       ) : (
         sections.map((g) => (
           <section key={g.status}>

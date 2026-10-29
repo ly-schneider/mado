@@ -167,7 +167,7 @@ function MobileTabBar({ slug, projectKey }: { slug: string; projectKey: string }
   );
   return (
     <>
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-32 bg-gradient-to-t from-page via-page/80 to-transparent md:hidden" />
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 h-[calc(env(safe-area-inset-bottom)+112px)] bg-gradient-to-t from-page from-55% to-transparent md:hidden" />
       <div className="fixed inset-x-4 bottom-[max(env(safe-area-inset-bottom),12px)] z-30 flex items-center justify-between md:hidden">
         <div className="flex items-center gap-1 rounded-full border border-edge bg-overlay/90 p-1.5 backdrop-blur-xl">
           {tab("/$ws/my-tasks", path.endsWith("/my-tasks") || path.includes("/tasks"), <CircleCheck />, "Tasks", { ws: slug }, { tab: "assigned" })}

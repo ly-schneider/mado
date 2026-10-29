@@ -1,16 +1,16 @@
 import type { DocNode, Priority, TaskStatus, TaskSummary, TaskType } from "@mado/contract";
 import { PRIORITY_LABEL } from "@mado/contract";
-import { Button, cn, Kbd, MadoMark, Menu, PriorityIcon, Segmented, Spinner, StatusIcon } from "@mado/ui";
+import { Button, Chips, cn, IconButton, Kbd, MadoMark, Menu, PriorityIcon, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Calendar, ChevronsUpDown, Mic, Sparkles, Zap } from "@mado/ui/fluent";
+import { Calendar, ChevronsUpDown, Sparkles, X, Zap } from "@mado/ui/fluent";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { modKey } from "../../lib/platform";
 import { shortDate } from "../../lib/time";
 import { toast } from "../../lib/toast";
 import { useMe, useWorkspace } from "../../lib/workspace";
-import { type AssigneeOption, createTask, predictKey, STATUS_LABEL, useAssigneeOptions, useLabels } from "./data";
+import { type AssigneeOption, createTask, STATUS_LABEL, useAssigneeOptions, useLabels } from "./data";
 import { type CaptureToken, parseDue, parsePriority, scanTokens, stripTokens, withCriteria } from "./parse";
 import { PickerPopover, type PickerTarget } from "./pickers";
 import { AssigneeAvatar, Pill } from "./TaskBits";
@@ -70,11 +70,12 @@ export function CapturePanel({
   const [drafting, setDrafting] = useState(false);
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
   const labels = useLabels(projectId);
   const epics = useQuery({ ...orpc.task.epics.queryOptions({ input: { projectId } }), enabled: !!projectId && kind === "task" });
   const assignees = useAssigneeOptions();
   const ai = useQuery({ ...orpc.settings.ai.queryOptions(), staleTime: 300_000 });
-  // Warm the cache that predictKey reads, so "becomes GAT-125" is right on first open.
+  // Warm the cache that predictKey reads, so the optimistic key is right on first open.
   useQuery({ ...orpc.task.list.queryOptions({ input: { projectId } }), enabled: !!projectId && kind === "task" });
 
   const tokens = useMemo(() => (kind === "task" ? scanTokens(title) : []), [title, kind]);
@@ -131,6 +132,13 @@ export function CapturePanel({
     el.style.height = "0px";
     el.style.height = `${el.scrollHeight}px`;
   }, [title]);
+
+  useLayoutEffect(() => {
+    const el = notesRef.current;
+    if (!el) return;
+    el.style.height = "0px";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [details]);
 
   const chooseProject = (id: string) => {
     setProjectId(id);
@@ -234,40 +242,18 @@ export function CapturePanel({
     }
   };
 
-  const insertSigil = (sigil: string) => {
-    const el = titleRef.current;
-    const pos = el?.selectionStart ?? title.length;
-    const before = title.slice(0, pos);
-    const add = `${before && !before.endsWith(" ") ? " " : ""}${sigil}`;
-    setTitle(before + add + title.slice(pos));
-    requestAnimationFrame(() => {
-      el?.focus();
-      el?.setSelectionRange(pos + add.length, pos + add.length);
-    });
-  };
-
   const sheet = variant === "sheet";
   const placeholder = kind === "task" ? (sheet ? "What needs doing?" : "Task title  #label !priority @assignee ^due") : kind === "note" ? "Note title" : "Company name";
-  const preview = kind === "task" ? `becomes ${project ? predictKey(project.id, project.key) : "…"}` : kind === "note" ? "becomes a page" : `becomes a lead in ${project?.name ?? ""}`;
 
   const kindSwitch = (
     <Segmented
-      size={sheet ? "touch" : "md"}
       value={kind}
       onChange={setKind}
-      options={
-        sheet
-          ? [
-              { value: "task", label: "Task" },
-              { value: "lead", label: "Lead" },
-              { value: "note", label: "Note" },
-            ]
-          : [
-              { value: "task", label: "Task" },
-              { value: "note", label: "Note" },
-              { value: "lead", label: "Lead" },
-            ]
-      }
+      options={[
+        { value: "task", label: "Task" },
+        { value: "note", label: "Note" },
+        { value: "lead", label: "Lead" },
+      ]}
     />
   );
 
@@ -341,7 +327,7 @@ export function CapturePanel({
   );
 
   const titleField = (
-    <div className={cn("relative", sheet ? "text-[20px] font-semibold leading-7" : "text-title")}>
+    <div className={cn("relative", sheet ? "text-[24px] font-semibold leading-8" : "text-title")}>
       {/* Mirror behind a transparent textarea: the only way to dim the tokens while keeping native editing. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 whitespace-pre-wrap break-words text-ink">
         {renderTokens(title, resolved.out)}
@@ -383,50 +369,40 @@ export function CapturePanel({
   if (sheet) {
     return (
       <div className="flex h-full flex-col" onKeyDown={onKeyDown}>
-        <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-edge" />
-        <div className="flex h-14 shrink-0 items-center px-4">
-          <button type="button" onClick={onClose} className="h-11 pr-3 text-touch text-ink-muted">
-            Cancel
-          </button>
-          <span className="flex-1 text-center text-touch font-semibold text-ink">Capture</span>
-          <Button size="touch" variant="primary" className="h-9" disabled={!cleanTitle} loading={saving} onClick={() => submit(false)}>
+        <div className="flex h-14 shrink-0 items-center justify-between px-3">
+          <IconButton label="Close" size="touch" className="rounded-full text-ink-muted [&_svg]:size-5" onClick={onClose}>
+            <X />
+          </IconButton>
+          <Button size="touch" variant="primary" className="h-9 rounded-full px-5" disabled={!cleanTitle} loading={saving} onClick={() => submit(false)}>
             Add
           </Button>
         </div>
-        <div className="px-4">{kindSwitch}</div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-3">
           {titleField}
           <textarea
+            ref={notesRef}
             value={details}
             onChange={(e) => setDetails(e.target.value)}
-            placeholder="Notes in Markdown…"
-            rows={2}
-            className="mt-2 w-full resize-none bg-transparent text-touch text-ink-muted outline-none placeholder:text-ink-faint"
+            placeholder="Notes…"
+            rows={1}
+            aria-label="Notes"
+            className="mt-2 block w-full resize-none overflow-hidden bg-transparent text-touch text-ink-muted outline-none placeholder:text-ink-faint"
           />
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-3">
+          <Chips
+            value={kind}
+            onChange={setKind}
+            className="-mx-5 mt-6 px-5"
+            options={[
+              { value: "task", label: "Task" },
+              { value: "lead", label: "Lead" },
+              { value: "note", label: "Note" },
+            ]}
+          />
+          <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto border-t border-edge px-5 pt-4">
             {projectSwitch}
             {pills}
           </div>
         </div>
-        {kind === "task" && (
-          <div className="flex shrink-0 items-center gap-2 border-t border-edge bg-panel px-3 py-2 pb-[max(env(safe-area-inset-bottom),8px)]">
-            {[
-              ["#", "label"],
-              ["!", "priority"],
-              ["@", "assign"],
-              ["^", "due"],
-            ].map(([s, l]) => (
-              <button key={s} type="button" onClick={() => insertSigil(s!)} className="flex h-9 items-center gap-1 rounded-lg border border-edge bg-raised px-2.5 text-sm text-ink-muted active:bg-state-active">
-                <span className="text-ink">{s}</span> {l}
-              </button>
-            ))}
-            <div className="flex-1" />
-            {aiButton}
-            <button type="button" aria-label="Dictate (coming soon)" disabled className="flex size-9 items-center justify-center text-ink-subtle opacity-60">
-              <Mic className="size-5" />
-            </button>
-          </div>
-        )}
       </div>
     );
   }
@@ -452,8 +428,7 @@ export function CapturePanel({
       </div>
       <div className="flex min-h-[52px] flex-wrap items-center gap-1.5 border-t border-edge px-4 py-2.5">
         {pills}
-        <span className="ml-auto pl-2 text-label text-ink-subtle">{preview}</span>
-        <Button variant="primary" size="sm" kbd="↵" disabled={!cleanTitle} loading={saving} onClick={() => submit(false)}>
+        <Button variant="primary" size="sm" className="ml-auto" kbd="↵" disabled={!cleanTitle} loading={saving} onClick={() => submit(false)}>
           Create
         </Button>
       </div>

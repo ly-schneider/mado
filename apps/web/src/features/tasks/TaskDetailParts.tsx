@@ -203,16 +203,16 @@ export function Linked({ task }: { task: TaskDetail }) {
   return (
     <div className="min-w-0">
       <SectionTitle title="Linked" meta={count || undefined} action={<AddDocButton task={task} />} />
-      <div className="divide-y divide-edge overflow-hidden rounded-lg border border-edge">
-        {count === 0 && <div className="flex h-9 items-center px-3 text-label text-ink-faint">Nothing linked</div>}
+      <div className="-mx-2">
+        {count === 0 && <div className="flex h-9 items-center px-2 text-label text-ink-faint">Nothing linked</div>}
         {task.linkedDocs.map((d) => (
-          <Link key={d.id} to="/$ws/wiki/$docId" params={{ ws: ws.slug, docId: d.id }} className="flex h-9 items-center gap-2.5 px-3 text-sm hover:bg-state-hover">
+          <Link key={d.id} to="/$ws/wiki/$docId" params={{ ws: ws.slug, docId: d.id }} className="flex h-9 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-state-hover">
             <FileText className="size-4 shrink-0 text-ink-subtle" />
             <span className="min-w-0 flex-1 truncate text-ink">{docLabel(d)}</span>
           </Link>
         ))}
         {task.git.map((g) => (
-          <a key={g.id} href={g.url} target="_blank" rel="noreferrer" className="flex h-9 items-center gap-2.5 px-3 text-sm hover:bg-state-hover">
+          <a key={g.id} href={g.url} target="_blank" rel="noreferrer" className="flex h-9 items-center gap-2.5 rounded-md px-2 text-sm hover:bg-state-hover">
             {g.kind === "pr" ? <GitPullRequest className="size-4 shrink-0 text-ink-subtle" /> : g.kind === "branch" ? <GitBranch className="size-4 shrink-0 text-ink-subtle" /> : <GitCommitHorizontal className="size-4 shrink-0 text-ink-subtle" />}
             <span className={cn("shrink-0 text-ink-muted", g.kind === "branch" && "min-w-0 flex-1 truncate")}>{g.kind === "pr" ? `#${g.externalId}` : g.kind === "branch" ? g.externalId : g.externalId.slice(0, 7)}</span>
             {g.kind !== "branch" && <span className="min-w-0 flex-1 truncate text-ink-muted">{g.title}</span>}
