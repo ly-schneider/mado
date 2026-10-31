@@ -16,7 +16,7 @@ ops/             Dockerfile, compose files, backup sidecar, self-hosting guide
 
 ## Develop
 
-Needs Bun 1.3 and Docker. Rust only for the desktop app.
+Needs Bun 1.4 and Docker. Rust only for the desktop app.
 
 ```sh
 bun install
