@@ -10,8 +10,13 @@ permissions:
 
 jobs:
   publish:
-    name: Publish image
+    name: Publish ${{ matrix.image.name }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - { name: mado, context: ., file: ops/Dockerfile }
+          - { name: mado-backup, context: ops/backup, file: ops/backup/Dockerfile }
     permissions:
       contents: read
       packages: write
@@ -29,7 +34,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -38,16 +43,16 @@ jobs:
       - id: push
         uses: docker/build-push-action@v7
         with:
-          context: .
-          file: ops/Dockerfile
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.file }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.image.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
       - uses: actions/attest-build-provenance@v4
         with:
-          subject-name: ghcr.io/${{ github.repository }}
+          subject-name: ghcr.io/${{ github.repository_owner }}/${{ matrix.image.name }}
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true

@@ -23,7 +23,7 @@ updates:
         update-types: [minor, patch]
 
   - package-ecosystem: docker
-    directory: /ops
+    directories: [/ops, /ops/backup]
     schedule:
       interval: weekly
     commit-message:
