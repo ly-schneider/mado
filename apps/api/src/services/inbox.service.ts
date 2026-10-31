@@ -19,7 +19,7 @@ function stageText(a: Json, label: string, withLabel: boolean) {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
- * One human sentence per audit row. `withLabel` names the entity ("moved GAT-109 → In progress");
+ * One human sentence per audit row. `withLabel` names the entity ("moved MAD-109 → In progress");
  * without it the sentence reads inside the entity's own activity feed ("moved Todo → In progress").
  *
  * Action names: <entity>.create | update | save | delete | restore | purge | read | link_doc | unlink_doc,

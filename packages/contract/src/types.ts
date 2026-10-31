@@ -53,7 +53,7 @@ export interface Project {
   name: string;
   description: string;
   openTaskCount: number;
-  /** Number the next task will get, e.g. 125 for GAT-125. */
+  /** Number the next task will get, e.g. 125 for MAD-125. */
   nextNumber: number;
 }
 

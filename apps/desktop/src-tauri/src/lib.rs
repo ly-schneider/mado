@@ -9,7 +9,7 @@ const MAIN: &str = "main";
 const CAPTURE: &str = "capture";
 
 /// Deep links wait here until the SPA takes them. Links can arrive before the webview has
-/// loaded (cold start from `mado://GAT-109`), so the SPA pulls instead of relying on the event.
+/// loaded (cold start from `mado://MAD-109`), so the SPA pulls instead of relying on the event.
 #[derive(Default)]
 struct PendingLinks(Mutex<Vec<String>>);
 

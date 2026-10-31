@@ -30,7 +30,7 @@ export function groupByStatus(tasks: TaskSummary[], order: TaskStatus[] = STATUS
   return map;
 }
 
-/** gat-109-rrule: what `git switch -c` should get, so commits link back to the task. */
+/** mad-109-rclone-backup-sidecar: what `git switch -c` should get, so commits link back to the task. */
 export function branchName(key: string, title: string) {
   const slug = title
     .toLowerCase()

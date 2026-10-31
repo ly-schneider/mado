@@ -197,8 +197,8 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
     }) as never);
   };
 
-  const projectKey = z.string().describe("Project key, e.g. GAT");
-  const taskKey = z.string().describe("Task key, e.g. GAT-109");
+  const projectKey = z.string().describe("Project key, e.g. MAD");
+  const taskKey = z.string().describe("Task key, e.g. MAD-109");
   const docRef = z.string().describe("Page id (uuid) or page title, optionally as a path like Folder/Page");
 
   tool("whoami", "Show who you are in Mado: your agent name, grant id, this session id, and exactly which projects, levels (read/write/delete) and resource types (docs, tasks, comments, crm) your grant allows. Call this first if unsure what you may do.", {}, readOnly, async (_args, ctx) => {
@@ -219,13 +219,13 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
     };
   });
 
-  tool("list_projects", "List the projects this agent can access, with their key (used as task key prefix, e.g. GAT-109), workspace and your access level.", {}, readOnly, async (_args, ctx) =>
+  tool("list_projects", "List the projects this agent can access, with their key (used as task key prefix, e.g. MAD-109), workspace and your access level.", {}, readOnly, async (_args, ctx) =>
     (await projects(ctx)).map((p) => ({ key: p.key, name: p.name, workspace: p.workspaceName, level: p.level })),
   );
 
   tool(
     "search",
-    "Full-text search across tasks, wiki pages and leads you can access. Matches task keys (GAT-109), titles and bodies in English and German.",
+    "Full-text search across tasks, wiki pages and leads you can access. Matches task keys (MAD-109), titles and bodies in English and German.",
     {
       q: z.string().min(1).max(200).describe("Search text"),
       types: z.array(z.enum(["tasks", "docs", "leads"])).optional().describe("Limit to these result types"),
@@ -288,7 +288,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
 
   tool(
     "create_task",
-    "Create a task in a project. Returns its key (e.g. GAT-110). Labels are matched by name; epic by key; linked docs by id or title. Write the description in Markdown and include acceptance criteria when you know them.",
+    "Create a task in a project. Returns its key (e.g. MAD-110). Labels are matched by name; epic by key; linked docs by id or title. Write the description in Markdown and include acceptance criteria when you know them.",
     {
       project: projectKey,
       title: z.string().min(1).max(300),
@@ -408,7 +408,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
 
   tool(
     "create_doc",
-    "Create a wiki page or folder in a project. Content is Markdown; link other pages with [[Page title]] and tasks with their key (GAT-109). Folders only group pages and other folders, nested to any depth; they have no content.",
+    "Create a wiki page or folder in a project. Content is Markdown; link other pages with [[Page title]] and tasks with their key (MAD-109). Folders only group pages and other folders, nested to any depth; they have no content.",
     {
       project: projectKey,
       kind: z.enum(["page", "folder"]).optional().describe("Defaults to page"),
@@ -546,7 +546,7 @@ export function registerTools(server: McpServer, deps: ToolDeps) {
   );
 }
 
-export const SERVER_INSTRUCTIONS = `Mado is the user's workspace for wiki pages, tasks (keys like GAT-109) and CRM leads.
+export const SERVER_INSTRUCTIONS = `Mado is the user's workspace for wiki pages, tasks (keys like MAD-109) and CRM leads.
 - Start with whoami or list_projects to see what this grant allows.
 - Before working on a task, call get_task and read its linked docs with get_doc.
 - Report progress with comment_task and move the task with update_task (status in_progress, in_review, done). Put the task key in commit messages so Mado links the commit.

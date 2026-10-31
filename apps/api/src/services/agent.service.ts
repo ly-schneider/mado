@@ -410,7 +410,7 @@ export class AgentService {
     }));
   }
 
-  /** Sessions active in the last 10 minutes, for the «Claude Code is on GAT-109» banner. */
+  /** Sessions active in the last 10 minutes, for the «Claude Code is on MAD-109» banner. */
   async activeSessions(actor: Actor) {
     const user = this.access.requireUser(actor);
     const rows = await this.dbs.db

@@ -38,7 +38,7 @@ bun run desktop:dev     # starts Vite and opens the app against it
 bun run desktop:build   # mado.app and a .dmg in src-tauri/target/release/bundle
 ```
 
-On first start it asks for the server address (stored locally, change it under mado › Change server…). Quick capture is ⌥Space from any app. `mado://GAT-109` opens a task.
+On first start it asks for the server address (stored locally, change it under mado › Change server…). Quick capture is ⌥Space from any app. `mado://MAD-109` opens a task.
 
 ## Self-host
 
@@ -51,7 +51,7 @@ This pulls the app and a backup sidecar from GHCR and starts them with Postgres.
 
 ### Git
 
-In project settings, add a repo to get a webhook URL and secret. GitHub: content type `application/json`, events *Pushes*, *Pull requests*, *Branch or tag creation*. GitLab: *Push events* and *Merge request events*, secret token as given. Keys like `GAT-109` in commit messages, PR titles and branch names (`gat-109-rrule`) link to the task. An opened PR moves it to In review, a merged one to Done.
+In project settings, add a repo to get a webhook URL and secret. GitHub: content type `application/json`, events *Pushes*, *Pull requests*, *Branch or tag creation*. GitLab: *Push events* and *Merge request events*, secret token as given. Keys like `MAD-109` in commit messages, PR titles and branch names (`mad-109-rclone-backup-sidecar`) link to the task. An opened PR moves it to In review, a merged one to Done.
 
 ## Connect an agent
 

@@ -25,7 +25,7 @@ export function useProject(key: string): Project | undefined {
   return ws.projects.find((p) => p.key === key.toUpperCase());
 }
 
-/** Project for a task key like GAT-109. */
+/** Project for a task key like MAD-109. */
 export function useProjectForTaskKey(taskKey: string): Project | undefined {
   return useProject(taskKey.split("-")[0] ?? "");
 }

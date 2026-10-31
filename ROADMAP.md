@@ -12,7 +12,7 @@ mado is a self-hosted wiki, task tracker and lightweight CRM for small teams and
 
 ## Available now
 
-- Workspaces and projects with short keys that prefix task IDs (`GAT-109`)
+- Workspaces and projects with short keys that prefix task IDs (`MAD-109`)
 - Tasks, bugs and epics with status, priority, labels, assignees (people or agents), board and list views, filters
 - Wiki with nested pages and folders, `[[links]]` with backlinks, task auto-links, Markdown live preview, export as Markdown or zip
 - Full-text search across docs and tasks (German and English)

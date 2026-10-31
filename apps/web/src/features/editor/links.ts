@@ -16,7 +16,7 @@ export function findByTitle(tree: DocNode[] | undefined, raw: string) {
 }
 
 /**
- * Everything the editor and the view need to turn [[Page]] and GAT-109 into links: the page titles for
+ * Everything the editor and the view need to turn [[Page]] and MAD-109 into links: the page titles for
  * autocomplete, the project keys that make a token a task key, and the navigation handler.
  */
 export function useLinkContext({ workspaceId, wsSlug, onOpenLink }: { workspaceId?: string; wsSlug?: string; onOpenLink?: OpenLink }) {

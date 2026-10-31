@@ -130,7 +130,7 @@ describe("search", () => {
   });
 
   test("tsquery syntax in user input never errors", async () => {
-    for (const q of ["a & | ! (", "'", ":*", "-", "GAT-", "&&&"]) {
+    for (const q of ["a & | ! (", "'", ":*", "-", "MAD-", "&&&"]) {
       await search.query(user, { workspaceId, q, limit: 8 });
     }
   });

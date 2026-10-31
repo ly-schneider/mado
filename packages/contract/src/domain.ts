@@ -57,7 +57,7 @@ export const PROJECT_KEY_RE = /^[A-Z][A-Z0-9]{1,4}$/;
 /** Task keys in free text, commit messages, PR titles and branch names. */
 export const TASK_KEY_RE = /\b([A-Z][A-Z0-9]{1,4})-(\d+)\b/g;
 
-/** Branch names are usually lower case (gat-109-rrule), so match those case-insensitively. */
+/** Branch names are usually lower case (mad-109-rclone-backup-sidecar), so match those case-insensitively. */
 export function findTaskKeys(text: string, opts: { caseInsensitive?: boolean } = {}): string[] {
   const re = new RegExp(TASK_KEY_RE.source, opts.caseInsensitive ? "gi" : "g");
   const keys = new Set<string>();

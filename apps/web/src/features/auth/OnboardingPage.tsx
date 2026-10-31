@@ -9,7 +9,7 @@ import { useMe } from "../../lib/workspace";
 import { useIsPhone } from "../settings/shared";
 import { AuthScreen, FormError } from "./AuthLayout";
 
-/** "Gather" → "GAT", "Q4 launch" → "Q4L". */
+/** "mado" → "MAD", "Q4 launch" → "Q4L". */
 export function suggestKey(name: string) {
   const clean = name.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^[0-9]+/, "");
   return clean.slice(0, 3);
@@ -98,7 +98,7 @@ export function OnboardingPage() {
         <Field label="First project">
           <Input
             required
-            placeholder="Gather"
+            placeholder="mado"
             touch={phone}
             value={project}
             onChange={(e) => {
@@ -112,7 +112,7 @@ export function OnboardingPage() {
             <Input
               required
               maxLength={5}
-              placeholder="GAT"
+              placeholder="MAD"
               touch={phone}
               value={key}
               className="uppercase"

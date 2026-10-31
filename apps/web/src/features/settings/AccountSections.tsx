@@ -185,7 +185,7 @@ export function AppearanceSection() {
         </div>
       </Card>
       <p className="px-1 text-sm text-ink-muted">
-        Preview: <span className="text-accent">a link to GAT-109</span> and a <span className="rounded bg-state-selected px-1">selected row</span>.
+        Preview: <span className="text-accent">a link to MAD-109</span> and a <span className="rounded bg-state-selected px-1">selected row</span>.
       </p>
     </SettingsGroup>
   );

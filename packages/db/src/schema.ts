@@ -42,7 +42,7 @@ export type GrantLevel = "read" | "write" | "delete";
 export type ResourceType = "docs" | "tasks" | "comments" | "crm";
 export type LeadStage = "new" | "contacted" | "replied" | "qualified" | "won" | "lost";
 
-// Both language configs plus 'simple' so keys like GAT-109 and German compounds both match.
+// Both language configs plus 'simple' so keys like MAD-109 and German compounds both match.
 const searchVector = (title: string, body: string) =>
   sql.raw(`setweight(to_tsvector('simple', coalesce(${title}, '')), 'A') ||
     setweight(to_tsvector('english', coalesce(${title}, '')), 'A') ||

@@ -290,7 +290,7 @@ export class TaskService {
   }
 
   async get(actor: Actor, key: string): Promise<TaskDetail> {
-    // The UI pads numbers (GAT-099); stored keys don't.
+    // The UI pads numbers (MAD-099); stored keys don't.
     const normalized = key.trim().toUpperCase().replace(/-0+(\d)/, "-$1");
     const [row] = await this.db.select().from(tasks).where(and(eq(tasks.key, normalized), isNull(tasks.deletedAt)));
     if (!row) throw notFound("Task");
