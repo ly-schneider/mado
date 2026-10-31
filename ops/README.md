@@ -60,12 +60,13 @@ docker compose exec backup restore-test    # restore the newest dump into a scra
 docker compose logs backup
 ```
 
-Restore a dump into the live database:
+Replace the live database with a dump (the newest one if you leave out the file):
 
 ```sh
 docker compose stop api
-docker compose exec backup pg_restore -d mado --clean --if-exists --no-owner /backups/daily/mado-<timestamp>.dump
+docker compose exec backup restore /backups/daily/mado-<timestamp>.dump
 docker compose start api
 ```
 
 The restore runs as `mado_owner`. The app's own database role can't delete core data, so it couldn't restore over it.
+

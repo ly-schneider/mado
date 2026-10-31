@@ -4,7 +4,8 @@ FROM postgres:17-alpine
 RUN apk add --no-cache rclone tzdata && mkdir -p /root/.config/rclone && touch /root/.config/rclone/rclone.conf
 COPY backup.sh /usr/local/bin/backup
 COPY restore-test.sh /usr/local/bin/restore-test
+COPY restore.sh /usr/local/bin/restore
 COPY entrypoint.sh /usr/local/bin/backup-entrypoint
-RUN chmod +x /usr/local/bin/backup /usr/local/bin/restore-test /usr/local/bin/backup-entrypoint
+RUN chmod +x /usr/local/bin/backup /usr/local/bin/restore-test /usr/local/bin/restore /usr/local/bin/backup-entrypoint
 VOLUME /backups
 ENTRYPOINT ["/usr/local/bin/backup-entrypoint"]
