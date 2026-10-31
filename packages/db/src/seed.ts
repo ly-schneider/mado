@@ -332,8 +332,7 @@ const RESTORE_OLD = `The backup sidecar dumps at 02:15 and mirrors to the offsit
 
 \`\`\`sh
 docker compose stop api
-docker compose exec backup pg_restore -d mado --clean --if-exists \\
-  /backups/daily/mado-2026-11-02T0215Z.dump
+docker compose exec backup restore
 docker compose start api
 \`\`\`
 
@@ -345,8 +344,7 @@ const RESTORE = `The backup sidecar dumps at 02:15 and mirrors to the offsite bu
 
 \`\`\`sh
 docker compose stop api
-docker compose exec backup pg_restore -d mado --clean --if-exists --no-owner \\
-  /backups/daily/mado-2026-11-02T0215Z.dump
+docker compose exec backup restore /backups/daily/mado-2026-11-02T0215Z.dump
 docker compose start api
 \`\`\`
 

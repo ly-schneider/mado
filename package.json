@@ -21,8 +21,8 @@
     "db:up": "docker compose -f ops/docker-compose.dev.yml up -d"
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "turbo": "^2.11.10",
-    "typescript": "~5.9.3",
-    "@types/bun": "latest"
+    "typescript": "~7.0.2"
   }
 }
