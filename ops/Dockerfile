@@ -33,6 +33,9 @@ COPY packages/db packages/db
 COPY apps/api apps/api
 COPY --from=build /app/apps/web/dist apps/web/dist
 COPY ops/entrypoint.sh /usr/local/bin/mado-entrypoint
+# Last, so a new version only changes this layer.
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
 USER bun
 EXPOSE 4100
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \

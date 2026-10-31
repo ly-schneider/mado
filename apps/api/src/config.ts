@@ -19,6 +19,7 @@ export const config = {
   /** 32+ chars. Encrypts secrets at rest (OpenRouter key, webhook secrets, share tokens). */
   secretKey: env("MADO_SECRET_KEY", dev ? "dev-only-secret-key-change-me-0123456789" : undefined),
   webDist: process.env.WEB_DIST ?? new URL("../../web/dist", import.meta.url).pathname,
-  version: "0.1.0",
+  /** Set at image build time by the release workflow. */
+  version: process.env.APP_VERSION || "dev",
   sessionDays: 60,
 };
