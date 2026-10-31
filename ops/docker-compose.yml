@@ -13,7 +13,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: mado
     volumes:
-      # Postgres 18+ keeps data in a versioned subfolder, so the next major upgrade can run in place.
       - postgres:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mado_owner -d mado"]
