@@ -35,4 +35,4 @@ Screens NOT in Figma must be designed by you on the same foundation, using the M
 - Do not commit. Do not run `git` write commands. Do not install new deps unless needed; if you do, use `bun add` in the right package and say so in your report.
 
 ## Finish
-End with a short report: what you built (files), what you verified and how, what is left or deviates from the design.
+End with a short report: what you built (files), what you verified and how, what is left or deviates from the roadmap/design.
