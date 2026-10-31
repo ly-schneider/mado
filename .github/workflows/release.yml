@@ -2,15 +2,74 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  plan:
+    name: Plan version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: next
+        run: sh .github/scripts/next-version.sh >> "$GITHUB_OUTPUT"
+      - name: Summary
+        env:
+          VERSION: ${{ steps.next.outputs.version }}
+        run: |
+          if [ -n "$VERSION" ]; then
+            echo "Next release: **v$VERSION**. Approve the release job to publish it." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Nothing to release: only docs, chores, CI or tests changed since the last tag." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  approve:
+    name: Release v${{ needs.plan.outputs.version }}
+    needs: plan
+    if: needs.plan.outputs.version != ''
+    runs-on: ubuntu-latest
+    # Waits for a reviewer. A newer merge replaces a release that is still waiting.
+    environment: release
+    concurrency:
+      group: release-approval
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.draft.outputs.id }}
+    steps:
+      - id: draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.plan.outputs.version }}
+        run: |
+          gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" --title "mado $TAG" --generate-notes
+          echo "id=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json databaseId --jq .databaseId)" >> "$GITHUB_OUTPUT"
+
+  docker:
+    name: Docker
+    needs: [plan, approve]
+    uses: ./.github/workflows/docker.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+
   desktop:
     name: macOS app
+    needs: [plan, approve]
     runs-on: macos-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -23,6 +82,11 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
       - run: bun install --frozen-lockfile
+      - name: Set app version
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        working-directory: apps/desktop/src-tauri
+        run: jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp && mv tauri.conf.tmp tauri.conf.json
       # Unsigned until Apple signing secrets are added (see tauri-action docs).
       - uses: tauri-apps/tauri-action@v1
         env:
@@ -31,7 +95,16 @@ jobs:
           projectPath: apps/desktop
           tauriScript: bun run tauri
           args: --target universal-apple-darwin
-          tagName: ${{ github.ref_name }}
-          releaseName: mado ${{ github.ref_name }}
-          releaseDraft: true
-          generateReleaseNotes: true
+          releaseId: ${{ needs.approve.outputs.release_id }}
+
+  publish:
+    name: Publish release
+    needs: [plan, docker, desktop]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Publishing the draft creates the tag.
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "v${{ needs.plan.outputs.version }}" -R "$GITHUB_REPOSITORY" --draft=false --latest
