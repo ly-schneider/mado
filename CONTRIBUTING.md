@@ -17,7 +17,7 @@ For anything bigger than a small fix, open an issue first so we can agree on the
 
 ## Releases
 
-Pull requests are squash-merged, so the PR title becomes the commit on `main` and must follow Conventional Commits too. After each merge the release workflow picks the next version from those titles since the last release: a breaking change (`feat!:`) bumps the major version, `feat` the minor, and `fix`, `perf`, `refactor`, `build` or `revert` the patch. Docs, chores, CI and tests alone don't make a release. The release then waits for a maintainer's approval before it tags, builds the macOS app and publishes the images.
+Pull requests are squash-merged, so the PR title becomes the commit on `main` and must follow Conventional Commits too. After each merge the release workflow picks the next version from those titles since the last release: a breaking change (`feat!:`) bumps the major version, `feat` the minor, and `fix`, `perf`, `refactor`, `build` or `revert` the patch ([github-tag-action](https://github.com/mathieudutour/github-tag-action) does the calculation). Docs, chores, CI and tests alone don't make a release. The release then waits for a maintainer's approval before it tags, builds the macOS app and publishes the images.
 
 ## Licensing of contributions
 
