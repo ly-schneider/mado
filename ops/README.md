@@ -12,7 +12,7 @@ docker compose up -d
 
 Generate secrets with `openssl rand -hex 32`. Then open `PUBLIC_URL`; the first visit asks you to create the owner account. The app container runs database migrations on every start.
 
-You only need `docker-compose.yml`, `postgres/init-roles.sh` and `.env` from this folder, so copying those three files to a server works just as well as cloning.
+You only need `docker-compose.yml` and `.env`, so copying those two files to a server works just as well as cloning. The app creates its database roles and sets their passwords from `.env` on every start.
 
 Images are published for `linux/amd64` and `linux/arm64`:
 

@@ -12,11 +12,8 @@ services:
       POSTGRES_USER: mado_owner
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: mado
-      MADO_APP_PASSWORD: ${MADO_APP_PASSWORD:?set MADO_APP_PASSWORD}
-      MADO_PURGE_PASSWORD: ${MADO_PURGE_PASSWORD:?set MADO_PURGE_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mado_owner -d mado"]
       interval: 5s
@@ -35,8 +32,8 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL}
       MADO_SECRET_KEY: ${MADO_SECRET_KEY:?set MADO_SECRET_KEY}
       DATABASE_OWNER_URL: postgres://mado_owner:${POSTGRES_PASSWORD}@postgres:5432/mado
-      DATABASE_URL: postgres://mado_app:${MADO_APP_PASSWORD}@postgres:5432/mado
-      DATABASE_PURGE_URL: postgres://mado_purge:${MADO_PURGE_PASSWORD}@postgres:5432/mado
+      DATABASE_URL: postgres://mado_app:${MADO_APP_PASSWORD:?set MADO_APP_PASSWORD}@postgres:5432/mado
+      DATABASE_PURGE_URL: postgres://mado_purge:${MADO_PURGE_PASSWORD:?set MADO_PURGE_PASSWORD}@postgres:5432/mado
       JOBS: ${JOBS:-on}
     ports:
       - "${MADO_BIND:-127.0.0.1:4100}:4100"
