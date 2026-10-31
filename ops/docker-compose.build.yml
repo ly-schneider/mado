@@ -1,0 +1,11 @@
+# Build the images from this checkout instead of pulling them:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  api:
+    image: mado:local
+    build:
+      context: ..
+      dockerfile: ops/Dockerfile
+  backup:
+    image: mado-backup:local
+    build: ./backup

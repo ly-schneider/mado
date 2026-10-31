@@ -24,14 +24,14 @@ mado is a self-hosted wiki, task tracker and lightweight CRM for small teams and
 - Leads CRM with stages, notes, AI analysis and email drafts (sending stays outside mado)
 - Built-in AI via OpenRouter with your own key
 - macOS desktop app (Tauri 2) with quick capture and `mado://` links, iPhone PWA
-- Docker image, backups with monthly restore tests
+- Docker images for amd64 and arm64, one compose file, and a backup sidecar (pg_dump, rclone offsite, monthly restore test)
 
 ## Next
 
 - Realtime collaborative editing (Yjs), with Markdown staying canonical
-- Prebuilt multi-arch Docker images and signed desktop releases
+- Signed desktop releases
 - Desktop builds for Windows and Linux
-- Better onboarding for self-hosters: one-command install and a setup guide without Cloudflare
+- Show backup status in Settings
 
 ## Later
 

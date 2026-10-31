@@ -11,7 +11,7 @@ apps/desktop     Tauri 2 shell: native menu, ⌥Space quick capture, mado:// lin
 packages/contract  oRPC contract, zod schemas, domain types
 packages/db      Drizzle schema, migrations, roles.sql
 packages/ui      Tokens and primitives
-ops/             Dockerfile, compose, backups, Cloudflare notes
+ops/             Dockerfile, compose files, backup sidecar, self-hosting guide
 ```
 
 ## Develop
@@ -40,27 +40,14 @@ bun run desktop:build   # mado.app and a .dmg in src-tauri/target/release/bundle
 
 On first start it asks for the server address (stored locally, change it under mado › Change server…). Quick capture is ⌥Space from any app. `mado://GAT-109` opens a task.
 
-## Deploy
-
-Docker Compose on a single VM. The reference setup exposes no ports and is reachable only through a Cloudflare Tunnel; any reverse proxy in front of `127.0.0.1:4100` works.
+## Self-host
 
 ```sh
-cp .env.example ops/.env          # fill in PUBLIC_URL, MADO_SECRET_KEY and the three passwords
-docker compose -f ops/docker-compose.yml --env-file ops/.env up -d --build
+cd ops && cp ../.env.example .env   # set PUBLIC_URL, MADO_SECRET_KEY and the three passwords
+docker compose up -d
 ```
 
-The API container runs migrations as the owner role, then serves everything on `127.0.0.1:4100` as `mado_app`. Point `cloudflared` there and set up Access as described in [ops/cloudflare.md](ops/cloudflare.md).
-
-Images for `linux/amd64` and `linux/arm64` are published to `ghcr.io/ly-schneider/mado` (`main`, and `x.y.z` per release) if you'd rather pull than build.
-
-Backups, from cron on the host:
-
-```sh
-15 2 * * *  BACKUP_DIR=/mnt/backup/mado RCLONE_REMOTE=r2:mado-backups /opt/mado/ops/backup.sh
-0 4 1 * *   BACKUP_DIR=/mnt/backup/mado /opt/mado/ops/restore-test.sh
-```
-
-`backup.sh` keeps 14 daily and 8 weekly `pg_dump` files, mirrors them offsite with rclone, and records the time shown in Settings. `restore-test.sh` restores the newest dump into a scratch database and compares row counts.
+This pulls the app and a backup sidecar from GHCR and starts them with Postgres. Put any reverse proxy in front of `127.0.0.1:4100`. Backups are a `pg_dump` on a schedule with optional rclone offsite copies, all set through environment variables. [ops/README.md](ops/README.md) has the details: building from source, proxy paths, backup settings and restores.
 
 ### Git
 
