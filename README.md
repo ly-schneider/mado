@@ -20,7 +20,7 @@ Needs Bun 1.3 and Docker. Rust only for the desktop app.
 
 ```sh
 bun install
-bun run db:up        # Postgres 17 on :5442
+bun run db:up        # Postgres 18 on :5442
 bun run db:migrate
 bun run db:seed      # optional sample workspace
 bun run dev          # API on :4100 (watch mode), SPA on :5173 proxying /rpc /mcp /oauth /webhooks to it

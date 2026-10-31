@@ -70,3 +70,18 @@ docker compose start api
 
 The restore runs as `mado_owner`. The app's own database role can't delete core data, so it couldn't restore over it.
 
+## Upgrading Postgres
+
+A new Postgres major version can't read the old one's data files, so move the data with a dump. The Postgres 17 → 18 switch also renamed the data volume (`pgdata` → `postgres`), so the old data stays untouched until you remove it.
+
+```sh
+docker compose exec backup backup     # fresh dump with the old version
+docker compose down
+git pull                              # or copy the new docker-compose.yml
+docker compose pull && docker compose up -d
+docker compose stop api
+docker compose exec backup restore       # newest dump
+docker compose start api
+```
+
+Check that your data is there, then delete the old volume with `docker volume rm mado_pgdata`.

@@ -1,15 +1,15 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: mado_owner
       POSTGRES_PASSWORD: mado
       POSTGRES_DB: mado
     ports: ["5442:5432"]
-    volumes: [mado-dev-pg:/var/lib/postgresql/data]
+    volumes: [mado-dev-pg18:/var/lib/postgresql]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mado_owner -d mado"]
       interval: 2s
       retries: 20
 volumes:
-  mado-dev-pg:
+  mado-dev-pg18:
