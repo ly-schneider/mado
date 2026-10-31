@@ -14,8 +14,8 @@
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "db:generate": "bun --cwd packages/db run generate",
-    "db:migrate": "bun --cwd packages/db run migrate",
+    "db:generate": "bun run --cwd packages/db generate",
+    "db:migrate": "bun run --cwd packages/db migrate",
     "db:seed": "bun run --cwd packages/db seed",
     "db:seed:reset": "bun run --cwd packages/db seed:reset",
     "db:up": "docker compose -f ops/docker-compose.dev.yml up -d"
