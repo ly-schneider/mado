@@ -1,6 +1,7 @@
 {
   "name": "mado",
   "private": true,
+  "license": "BUSL-1.1",
   "type": "module",
   "packageManager": "bun@1.3.11",
   "workspaces": [

@@ -3,6 +3,7 @@ name = "mado"
 version = "0.1.0"
 description = "mado desktop"
 authors = ["Leys Services"]
+license = "BUSL-1.1"
 edition = "2021"
 
 [lib]

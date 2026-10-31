@@ -23,8 +23,7 @@ bun install
 bun run db:up        # Postgres 17 on :5442
 bun run db:migrate
 bun run db:seed      # optional sample workspace
-cd apps/api && bun --watch src/main.ts   # API on :4100 (start from apps/api: Bun reads decorator config from its tsconfig)
-cd apps/web && bunx vite                 # SPA on :5173, proxies /rpc /mcp /oauth /webhooks to :4100
+bun run dev          # API on :4100 (watch mode), SPA on :5173 proxying /rpc /mcp /oauth /webhooks to it
 ```
 
 Open http://localhost:5173. The first visit asks you to create the owner account.
@@ -52,7 +51,9 @@ docker compose -f ops/docker-compose.yml --env-file ops/.env up -d --build
 
 The API container runs migrations as the owner role, then serves everything on `127.0.0.1:4100` as `mado_app`. Point `cloudflared` there and set up Access as described in [ops/cloudflare.md](ops/cloudflare.md).
 
-Backups, from cron on the VM:
+Images for `linux/amd64` and `linux/arm64` are published to `ghcr.io/ly-schneider/mado` (`main`, and `x.y.z` per release) if you'd rather pull than build.
+
+Backups, from cron on the host:
 
 ```sh
 15 2 * * *  BACKUP_DIR=/mnt/backup/mado RCLONE_REMOTE=r2:mado-backups /opt/mado/ops/backup.sh
@@ -95,3 +96,18 @@ Everything is a command, so ⌘K finds any action. Lists move with j/k. Shortcut
 | G I · G M · G B · G W | Go to inbox · my tasks · board · wiki |
 | G C · G T · G A · G S | Go to leads · trash · agents · settings |
 | 1 · 2 · 3 | My tasks: assigned · created · agents |
+
+## Contributing
+
+Issues and pull requests are welcome. See [ROADMAP.md](ROADMAP.md) for what's planned and read [CONTRIBUTING.md](CONTRIBUTING.md) first; security reports go through [SECURITY.md](SECURITY.md).
+
+## License
+
+mado is source-available under the [Business Source License 1.1](LICENSE), not an OSI open source license.
+
+- **Free** for individuals, non-profits, schools, and organizations with fewer than 50 people and less than USD 5M annual revenue, including self-hosting it for your own team in production.
+- **Not allowed** without a commercial license: offering mado to others as a hosted or managed service, or embedding it in a product you sell.
+- **Larger organizations** need a commercial license for production use. Contact levyn.schneider@leys.ch.
+- Each version converts to the GNU AGPL v3.0 or later four years after it is published.
+
+Reading, modifying and running mado for development, testing and evaluation is always allowed.
