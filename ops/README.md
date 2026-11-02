@@ -6,7 +6,7 @@ mado runs as three containers: the app (API, web app, MCP and webhooks in one im
 
 ```sh
 git clone https://github.com/ly-schneider/mado.git && cd mado/ops
-cp ../.env.example .env      # set PUBLIC_URL, MADO_SECRET_KEY and the three passwords
+cp ../.env.example .env      # set PUBLIC_URL, MADO_SECRET_KEY and the four passwords
 docker compose up -d
 ```
 
@@ -22,6 +22,23 @@ docker compose logs api | grep Setup
 Open it and create the owner account; the token stops working once setup is done. A restart before that prints a new one. For automated installs, set `MADO_SETUP_TOKEN` in `.env` instead and pass it to `/setup?token=…`.
 
 You only need `docker-compose.yml` and `.env`, so copying those two files to a server works just as well as cloning. The app creates its database roles and sets their passwords from `.env` on every start.
+
+### Database roles and containers
+
+| Role | Used by | Can |
+| --- | --- | --- |
+| `postgres` (`POSTGRES_PASSWORD`) | the postgres and backup containers only | everything: it's the superuser |
+| `mado_owner` (`MADO_OWNER_PASSWORD`) | migrations on app start | owns the `mado` database and creates the two roles below, but is not a superuser and can't create databases |
+| `mado_app` (`MADO_APP_PASSWORD`) | the app | read and write, no hard deletes of core data |
+| `mado_purge` (`MADO_PURGE_PASSWORD`) | the nightly trash purge | delete |
+
+The app container never gets the superuser password, so code running in it can't run commands on the database host (`COPY … PROGRAM`). It runs with a read-only root filesystem, all Linux capabilities dropped, `no-new-privileges` and a 768 MB memory limit. Postgres and the backup sidecar drop everything but the few capabilities their entrypoints need.
+
+Outside Docker, set `HOST=127.0.0.1` so the app only listens on loopback behind your proxy.
+
+### Upgrading from 0.1
+
+Older installs created `mado_owner` as the Postgres superuser. Add `MADO_OWNER_PASSWORD` to `.env`, then `docker compose pull && docker compose up -d` as usual. On start, the backup container renames the old superuser to `postgres` (its password stays `POSTGRES_PASSWORD`), creates a new `mado_owner` without superuser rights, and hands it the database. The app waits for that step. You can check with `docker compose logs backup | grep upgrade-roles`.
 
 Images are published for `linux/amd64` and `linux/arm64`:
 
@@ -92,4 +109,4 @@ docker compose exec backup restore /backups/daily/mado-<timestamp>.dump
 docker compose start api
 ```
 
-The restore runs as `mado_owner`. The app's own database role can't delete core data, so it couldn't restore over it.
+The restore runs as the `postgres` superuser, the only role that may drop and create databases, and recreates `mado` owned by `mado_owner`. Dumps leave out pg-boss's job queue; the app rebuilds it on start.

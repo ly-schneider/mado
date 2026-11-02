@@ -4,18 +4,33 @@
 # To build from source instead, add -f docker-compose.build.yml (see README.md).
 name: mado
 
+# Database roles: postgres is the superuser and only the postgres and backup containers know its
+# password. The app runs migrations as mado_owner (owns the database, no SUPERUSER or CREATEDB) and
+# serves requests as mado_app, so code running in the app container can't become a superuser.
+x-hardened: &hardened
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
 services:
   postgres:
     image: postgres:18.6@sha256:3a4264520e121176619f54ff867d12774bc81e95e7b84db58d63bccdb6144b81
     restart: unless-stopped
+    <<: *hardened
+    # The entrypoint fixes data directory ownership, then drops to the postgres user.
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]
+    mem_limit: 1g
     environment:
-      POSTGRES_USER: mado_owner
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: mado
+      MADO_OWNER_PASSWORD: ${MADO_OWNER_PASSWORD:?set MADO_OWNER_PASSWORD}
+    configs:
+      - source: init-roles
+        target: /docker-entrypoint-initdb.d/10-mado-owner.sh
     volumes:
       - postgres:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mado_owner -d mado"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mado"]
       interval: 5s
       retries: 20
     shm_size: 256mb
@@ -23,15 +38,24 @@ services:
   api:
     image: ghcr.io/ly-schneider/mado:${MADO_VERSION:-latest}
     restart: unless-stopped
+    <<: *hardened
+    read_only: true
+    tmpfs: [/tmp]
+    mem_limit: 768m
     depends_on:
       postgres:
+        condition: service_healthy
+      # Healthy once it has upgraded an old database to the role split; the app migrates as mado_owner.
+      backup:
         condition: service_healthy
     environment:
       NODE_ENV: production
       PORT: 4100
+      # Bun's cache; the root filesystem is read-only.
+      HOME: /tmp
       PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL}
       MADO_SECRET_KEY: ${MADO_SECRET_KEY:?set MADO_SECRET_KEY}
-      DATABASE_OWNER_URL: postgres://mado_owner:${POSTGRES_PASSWORD}@postgres:5432/mado
+      DATABASE_OWNER_URL: postgres://mado_owner:${MADO_OWNER_PASSWORD:?set MADO_OWNER_PASSWORD}@postgres:5432/mado
       DATABASE_URL: postgres://mado_app:${MADO_APP_PASSWORD:?set MADO_APP_PASSWORD}@postgres:5432/mado
       DATABASE_PURGE_URL: postgres://mado_purge:${MADO_PURGE_PASSWORD:?set MADO_PURGE_PASSWORD}@postgres:5432/mado
       JOBS: ${JOBS:-on}
@@ -44,6 +68,16 @@ services:
   backup:
     image: ghcr.io/ly-schneider/mado-backup:${MADO_VERSION:-latest}
     restart: unless-stopped
+    <<: *hardened
+    read_only: true
+    tmpfs: [/tmp, /etc/crontabs]
+    # busybox crond switches to the job's user (root) before each run.
+    cap_add: [SETUID, SETGID]
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/ready"]
+      interval: 5s
+      retries: 60
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,11 +86,21 @@ services:
         required: false
     environment:
       PGHOST: postgres
-      PGUSER: mado_owner
+      PGUSER: postgres
       PGPASSWORD: ${POSTGRES_PASSWORD}
       PGDATABASE: mado
+      MADO_OWNER_PASSWORD: ${MADO_OWNER_PASSWORD}
     volumes:
       - ${BACKUP_DIR:-backups}:/backups
+
+configs:
+  # Inline so docker-compose.yml and .env stay the only files a server needs. Runs once, on an empty volume.
+  init-roles:
+    content: |
+      psql -v ON_ERROR_STOP=1 -X -q --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" -v pw="$$MADO_OWNER_PASSWORD" <<'SQL'
+      CREATE ROLE mado_owner LOGIN NOSUPERUSER NOCREATEDB CREATEROLE PASSWORD :'pw';
+      ALTER DATABASE mado OWNER TO mado_owner;
+      SQL
 
 volumes:
   postgres:

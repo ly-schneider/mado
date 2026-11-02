@@ -11,7 +11,8 @@ KEEP_WEEKLY="${KEEP_WEEKLY:-8}"
 mkdir -p "$DIR/daily" "$DIR/weekly"
 file="$DIR/daily/mado-$(date -u +%Y-%m-%dT%H%MZ).dump"
 
-pg_dump --format=custom --compress=9 --no-owner --file="$file.partial"
+# pg-boss keeps only job state, which the app rebuilds on start; its schema belongs to the app role.
+pg_dump --format=custom --compress=9 --no-owner --exclude-schema=pgboss --file="$file.partial"
 # A dump that pg_restore can't list is not a backup.
 pg_restore --list "$file.partial" > /dev/null
 mv "$file.partial" "$file"

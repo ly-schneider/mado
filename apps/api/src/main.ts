@@ -21,5 +21,5 @@ app.enableCors({
   maxAge: 600,
 });
 app.enableShutdownHooks();
-await app.listen(config.port, "0.0.0.0");
+await app.listen(config.port, config.host);
 console.log(`mado api on :${config.port} (${config.publicUrl})`);
