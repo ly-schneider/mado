@@ -64,7 +64,7 @@ If you put a login wall (Cloudflare Access, an auth proxy) in front of the app, 
 | `/mcp`, `/oauth/*`, `/.well-known/*` | Agents sign in with OAuth 2.1 |
 | `/webhooks/*` | GitHub and GitLab, verified by signature or token |
 | `/s/*`, `/rpc/guest/*` | Guest share links |
-| `/assets/*`, `/manifest.webmanifest`, `/sw.js`, `/favicon*`, `/icon-*`, `/apple-touch-icon.png` | Static files for share links and the PWA |
+| `/assets/*`, `/theme.js`, `/manifest.webmanifest`, `/sw.js`, `/favicon*`, `/icon-*`, `/apple-touch-icon.png` | Static files for share links and the PWA |
 
 The desktop app calls the API directly, so it must be able to reach it without the login wall too.
 
