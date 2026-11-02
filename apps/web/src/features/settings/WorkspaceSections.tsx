@@ -10,7 +10,7 @@ import { ago, shortDate } from "../../lib/time";
 import { toast } from "../../lib/toast";
 import { useMe, useWorkspace } from "../../lib/workspace";
 import { LinkedText } from "../agents/ConnectedAgents";
-import { ConfirmDialog, copyText, EmptyLine, InlineInput, SettingsGroup, SettingsRow, TitleAction } from "./shared";
+import { ConfirmDialog, copyText, EmptyLine, InlineInput, SettingsGroup, SettingsRow, TitleAction, touchInput } from "./shared";
 
 export function WorkspaceSection() {
   const ws = useWorkspace();
@@ -110,6 +110,8 @@ export function MembersSection() {
   const members = useQuery(orpc.workspace.members.queryOptions({ input: { workspaceId: ws.id } }));
   const invites = useQuery(orpc.workspace.invites.queryOptions({ input: { workspaceId: ws.id }, enabled: owner }));
   const [removing, setRemoving] = useState<Member | null>(null);
+  const [inviting, setInviting] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
   // Invite URLs exist only in the create response; the server keeps a hash.
   const [urls, setUrls] = useState<Record<string, string>>({});
   const membersKey = orpc.workspace.members.queryKey({ input: { workspaceId: ws.id } });
@@ -130,12 +132,16 @@ export function MembersSection() {
   });
 
   const create = useMutation({
-    mutationFn: () => client.workspace.createInvite({ workspaceId: ws.id, role: "member" }),
+    mutationFn: (email: string) => client.workspace.createInvite({ workspaceId: ws.id, role: "member", email: email || undefined }),
     onSuccess: (inv) => {
       const url = inv.url;
+      setInviting(false);
+      setInviteEmail("");
       if (url) {
         setUrls((u) => ({ ...u, [inv.id]: url }));
-        toast("Invite link created. Send it to one person.", { action: { label: "Copy", run: () => copyText(url, "Invite link copied") } });
+        toast(inv.email ? `Invite link for ${inv.email} created` : "Invite link created. Send it to one person.", {
+          action: { label: "Copy", run: () => copyText(url, "Invite link copied") },
+        });
       }
       queryClient.invalidateQueries({ queryKey: invitesKey });
     },
@@ -156,14 +162,14 @@ export function MembersSection() {
     onSuccess: () => toast("Invite revoked"),
   });
 
-  useCommands(owner ? [{ id: "members.invite", title: "Invite member", group: "Settings", icon: <Plus />, run: () => create.mutate() }] : [], [owner]);
+  useCommands(owner ? [{ id: "members.invite", title: "Invite member", group: "Settings", icon: <Plus />, run: () => setInviting(true) }] : [], [owner]);
 
   const open = (invites.data ?? []).filter(pending);
   return (
     <>
       {owner && (
         <TitleAction>
-          <Button variant="primary" icon={<Plus />} loading={create.isPending} onClick={() => create.mutate()}>
+          <Button variant="primary" icon={<Plus />} onClick={() => setInviting(true)}>
             Invite
           </Button>
         </TitleAction>
@@ -237,6 +243,21 @@ export function MembersSection() {
           )}
         </SettingsGroup>
       )}
+
+      <ConfirmDialog
+        open={inviting}
+        onOpenChange={setInviting}
+        title={`Invite to ${ws.name}`}
+        confirmLabel="Create link"
+        loading={create.isPending}
+        focusConfirm={false}
+        onConfirm={() => create.mutate(inviteEmail.trim())}
+      >
+        <div className="flex flex-col gap-3">
+          <p>With an email, only that address can use the link. Without one, whoever gets the link can join as a member, so send it to one person.</p>
+          <Input type="email" autoFocus placeholder="name@example.com (optional)" aria-label="Email" className={touchInput} value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
+        </div>
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={!!removing}

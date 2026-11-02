@@ -277,37 +277,51 @@ export class WorkspaceService {
     };
   }
 
-  /** Accept as the signed-in user, or create an account first. Returns the user that joined. */
+  /**
+   * Accept as the signed-in user, or create an account first. Returns the user that joined.
+   * An invite with an email only works for that address; a link invite works for whoever holds it.
+   */
   async acceptInvite(token: string, signedIn: Actor | null, account?: { name: string; email: string; password: string }, ip: string | null = null) {
     const { inv } = await this.findInvite(token, ip);
     if (inv.expiresAt < new Date()) throw badRequest("This invite has expired");
-    let userId: string;
-    let createdUser = false;
+    const invitedEmail = inv.email?.trim().toLowerCase() ?? null;
+    const wrongEmail = (email: string) => invitedEmail !== null && email.trim().toLowerCase() !== invitedEmail;
+
+    let signedInUser: typeof users.$inferSelect | undefined;
     if (signedIn?.type === "user") {
-      userId = signedIn.userId;
+      [signedInUser] = await this.dbs.db.select().from(users).where(eq(users.id, signedIn.userId));
+      if (!signedInUser) throw new AppError("UNAUTHORIZED", "Sign in or create an account to accept");
+      if (wrongEmail(signedInUser.email)) throw forbidden("This invite is for another email address");
     } else if (account) {
-      userId = (await this.auth.createUser(account)).id;
-      createdUser = true;
+      if (wrongEmail(account.email)) throw forbidden("This invite is for another email address");
     } else {
       throw new AppError("UNAUTHORIZED", "Sign in or create an account to accept");
     }
-    const [user] = await this.dbs.db.select().from(users).where(eq(users.id, userId));
-    await this.dbs.db.transaction(async (tx) => {
+
+    return this.dbs.db.transaction(async (tx) => {
+      // Claim first: a concurrent accept blocks on this row, then finds it taken and gets nothing back.
+      const [claimed] = await tx
+        .update(invites)
+        .set({ acceptedAt: new Date() })
+        .where(and(eq(invites.id, inv.id), isNull(invites.acceptedAt), isNull(invites.revokedAt)))
+        .returning({ id: invites.id });
+      if (!claimed) throw notFound("Invite");
+      const user = signedInUser ?? (await this.auth.createUser(account!, tx));
+      await tx.update(invites).set({ acceptedById: user.id }).where(eq(invites.id, inv.id));
       const [existing] = await tx
         .select()
         .from(memberships)
-        .where(and(eq(memberships.workspaceId, inv.workspaceId), eq(memberships.userId, userId)));
-      if (!existing) await tx.insert(memberships).values({ workspaceId: inv.workspaceId, userId, role: inv.role });
-      await tx.update(invites).set({ acceptedAt: new Date(), acceptedById: userId }).where(eq(invites.id, inv.id));
-      await this.audit.record(tx, { type: "user", userId, name: user!.name }, {
+        .where(and(eq(memberships.workspaceId, inv.workspaceId), eq(memberships.userId, user.id)));
+      if (!existing) await tx.insert(memberships).values({ workspaceId: inv.workspaceId, userId: user.id, role: inv.role });
+      await this.audit.record(tx, { type: "user", userId: user.id, name: user.name }, {
         workspaceId: inv.workspaceId,
         action: "member.join",
         entityType: "member",
-        entityId: userId,
-        entityLabel: user!.name,
+        entityId: user.id,
+        entityLabel: user.name,
       });
+      return { workspaceId: inv.workspaceId, userId: user.id, createdUser: !signedInUser };
     });
-    return { workspaceId: inv.workspaceId, userId, createdUser };
   }
 
   /** Throws when the caller isn't owner; used by guards elsewhere. */
