@@ -29,6 +29,13 @@
       "when": 1793313721192,
       "tag": "0003_doc_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793647600559,
+      "tag": "0004_session_ip",
+      "breakpoints": true
     }
   ]
 }

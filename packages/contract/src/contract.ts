@@ -56,6 +56,9 @@ export const contract = {
     login: oc.input(z.object({ email: z.email(), password: z.string().min(1) })).output(type<T.Me>()),
     logout: oc.output(ok),
     me: oc.output(type<T.Me | null>()),
+    /** The signed-in user's own sessions, newest first. */
+    sessions: oc.output(type<T.UserSession[]>()),
+    revokeSession: oc.input(z.object({ id: z.string() })).output(ok),
     updateProfile: oc
       .input(
         z.object({

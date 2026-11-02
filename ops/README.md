@@ -42,6 +42,21 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 
 The app listens on `127.0.0.1:4100` (change with `MADO_BIND`). Point Caddy, nginx, Traefik or a Cloudflare Tunnel at it and set `PUBLIC_URL` to the public origin; links, OAuth metadata and the MCP URL are built from it. Keep long responses open for `/mcp` (streamable HTTP).
 
+### Client IPs
+
+mado records the client IP on sign-in (shown under Settings › Account › Sessions) and rate-limits by it, so it has to see the real one. It reads `X-Forwarded-For` only from peers in `TRUST_PROXY`, and the default `loopback, uniquelocal` covers a proxy on the same host or Docker network. Set it to the proxy's address or CIDR (`TRUST_PROXY=172.18.0.0/16`) or a hop count (`TRUST_PROXY=1`) if yours runs elsewhere.
+
+If the proxy passes the client IP in its own header, set `CLIENT_IP_HEADER`. mado reads that header only from a trusted proxy, and ignores it from anyone else.
+
+| Proxy | Settings |
+| --- | --- |
+| Caddy (`reverse_proxy 127.0.0.1:4100`) | none, Caddy sets `X-Forwarded-For` |
+| nginx | `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` |
+| cloudflared on the same host | `CLIENT_IP_HEADER=CF-Connecting-IP` |
+| Caddy or nginx behind a Cloudflare Tunnel | `CLIENT_IP_HEADER=CF-Connecting-IP` (the proxy forwards the header unchanged) |
+
+Docker publishes ports through its own proxy, so every connection to `MADO_BIND` seems to come from the Docker network and is trusted. Keep `MADO_BIND` on loopback or a private interface that only your proxy can reach, or anyone who reaches the port directly can set their own client IP.
+
 If you put a login wall (Cloudflare Access, an auth proxy) in front of the app, let these paths through, because they have their own auth or must be public:
 
 | Path | Why |

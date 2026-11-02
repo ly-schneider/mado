@@ -1,5 +1,6 @@
 import { All, Controller, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
+import { clientIp } from "../lib/client-ip";
 import { AuthService, sessionToken } from "../services/auth.service";
 import { RouterService } from "./router.service";
 
@@ -15,7 +16,7 @@ export class RpcController {
     const user = await this.auth.userFromSession(sessionToken(req));
     const { matched } = await this.routerService.handler.handle(req, res, {
       prefix: "/rpc",
-      context: { req, res, actor: user ? this.auth.userActor(user) : null, ip: req.ip ?? null },
+      context: { req, res, actor: user ? this.auth.userActor(user) : null, ip: clientIp(req) },
     });
     if (!matched) res.status(404).end();
   }

@@ -8,7 +8,7 @@ import { isDesktopOrigin } from "./lib/cookies";
 
 // Body parsing is off globally: oRPC and MCP read raw bodies, webhooks verify signatures on them.
 const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, logger: ["error", "warn", "log"] });
-app.set("trust proxy", "loopback, uniquelocal");
+app.set("trust proxy", config.trustProxy);
 app.use(cookieParser());
 // The desktop app loads the SPA from tauri://localhost and calls this server cross-origin with a session header.
 app.enableCors({

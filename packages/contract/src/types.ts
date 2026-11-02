@@ -34,6 +34,14 @@ export interface Me {
   accent: Accent;
 }
 
+export interface UserSession {
+  id: string;
+  userAgent: string | null;
+  ip: string | null;
+  createdAt: ISODate;
+  current: boolean;
+}
+
 export interface SetupStatus {
   needsSetup: boolean;
 }

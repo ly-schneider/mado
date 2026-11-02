@@ -1,9 +1,9 @@
-import type { Me } from "@mado/contract";
+import type { Me, UserSession } from "@mado/contract";
 import { sessions, users } from "@mado/db";
 import { type Db, type Tx } from "@mado/db";
 import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { timingSafeEqual } from "node:crypto";
-import { and, count, eq, gt, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, sql } from "drizzle-orm";
 import { config } from "../config";
 import { DbService } from "../db";
 import { type Actor, initials } from "../lib/actor";
@@ -96,12 +96,13 @@ export class AuthService implements OnApplicationBootstrap {
     return user;
   }
 
-  async createSession(userId: string, userAgent: string | null) {
+  async createSession(userId: string, client: { userAgent: string | null; ip: string | null }) {
     const token = randomToken(32);
     await this.dbs.db.insert(sessions).values({
       id: sha256(token),
       userId,
-      userAgent,
+      userAgent: client.userAgent,
+      ip: client.ip,
       expiresAt: new Date(Date.now() + config.sessionDays * 86_400_000),
     });
     return token;
@@ -109,6 +110,26 @@ export class AuthService implements OnApplicationBootstrap {
 
   async destroySession(token: string) {
     await this.dbs.db.delete(sessions).where(eq(sessions.id, sha256(token)));
+  }
+
+  async listSessions(userId: string, currentToken: string | undefined): Promise<UserSession[]> {
+    const current = currentToken ? sha256(currentToken) : null;
+    const rows = await this.dbs.db
+      .select()
+      .from(sessions)
+      .where(and(eq(sessions.userId, userId), gt(sessions.expiresAt, new Date())))
+      .orderBy(desc(sessions.createdAt));
+    return rows.map((r) => ({
+      id: r.id,
+      userAgent: r.userAgent,
+      ip: r.ip,
+      createdAt: r.createdAt.toISOString(),
+      current: r.id === current,
+    }));
+  }
+
+  async revokeSession(userId: string, id: string) {
+    await this.dbs.db.delete(sessions).where(and(eq(sessions.userId, userId), eq(sessions.id, id)));
   }
 
   async userFromSession(token: string | undefined): Promise<UserRow | null> {

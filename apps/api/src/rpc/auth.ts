@@ -4,6 +4,10 @@ import { SESSION_COOKIE, SESSION_HEADER, sessionToken, toMe } from "../services/
 import { authed, os } from "./base";
 import type { Services } from "./services";
 
+export function clientInfo(context: { req: Request; ip: string | null }) {
+  return { userAgent: context.req.headers["user-agent"] ?? null, ip: context.ip };
+}
+
 export function setSession(req: Request, res: Response, token: string) {
   if (isDesktopOrigin(req.headers.origin)) res.setHeader(SESSION_HEADER, token);
   else res.cookie(SESSION_COOKIE, token, cookieOptionsFor(req));
@@ -15,14 +19,14 @@ export const authRouter = (s: Services) => ({
 
   setup: os.auth.setup.handler(async ({ input, context }) => {
     const user = await s.auth.setup(input);
-    const token = await s.auth.createSession(user.id, context.req.headers["user-agent"] ?? null);
+    const token = await s.auth.createSession(user.id, clientInfo(context));
     setSession(context.req, context.res, token);
     return toMe(user);
   }),
 
   login: os.auth.login.handler(async ({ input, context }) => {
     const user = await s.auth.login(input.email, input.password);
-    const token = await s.auth.createSession(user.id, context.req.headers["user-agent"] ?? null);
+    const token = await s.auth.createSession(user.id, clientInfo(context));
     setSession(context.req, context.res, token);
     return toMe(user);
   }),
@@ -38,6 +42,17 @@ export const authRouter = (s: Services) => ({
     if (context.actor?.type !== "user") return null;
     const user = await s.auth.userFromSession(sessionToken(context.req));
     return user ? toMe(user) : null;
+  }),
+
+  sessions: authed.auth.sessions.handler(({ context }) => {
+    const user = s.access.requireUser(context.actor);
+    return s.auth.listSessions(user.userId, sessionToken(context.req));
+  }),
+
+  revokeSession: authed.auth.revokeSession.handler(async ({ input, context }) => {
+    const user = s.access.requireUser(context.actor);
+    await s.auth.revokeSession(user.userId, input.id);
+    return { ok: true as const };
   }),
 
   updateProfile: authed.auth.updateProfile.handler(async ({ input, context }) => {

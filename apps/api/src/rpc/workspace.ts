@@ -1,4 +1,4 @@
-import { setSession } from "./auth";
+import { clientInfo, setSession } from "./auth";
 import { authed, os } from "./base";
 import type { Services } from "./services";
 
@@ -25,7 +25,7 @@ export const workspaceRouter = (s: Services) => ({
   acceptInvite: os.workspace.acceptInvite.handler(async ({ input, context }) => {
     const result = await s.workspace.acceptInvite(input.token, context.actor, input.account);
     if (result.createdUser) {
-      const token = await s.auth.createSession(result.userId, context.req.headers["user-agent"] ?? null);
+      const token = await s.auth.createSession(result.userId, clientInfo(context));
       setSession(context.req, context.res, token);
     }
     return { workspaceId: result.workspaceId };

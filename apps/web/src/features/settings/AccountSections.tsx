@@ -1,12 +1,13 @@
-import type { Me } from "@mado/contract";
+import type { Me, UserSession } from "@mado/contract";
 import { Button, Card, cn, Input, Kbd, Segmented } from "@mado/ui";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Check } from "@mado/ui/fluent";
 import { useEffect, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { apiOrigin, isMac } from "../../lib/platform";
 import { type Accent, DEFAULT_ACCENT, setAccent, setTheme, type ThemePref, useTheme } from "../../lib/theme";
+import { ago } from "../../lib/time";
 import { toast } from "../../lib/toast";
 import { useMe } from "../../lib/workspace";
 import { MIN_PASSWORD } from "../auth/SetupPage";
@@ -88,22 +89,55 @@ export function AccountSection() {
         </form>
       </SettingsGroup>
 
-      <SettingsGroup title="Session">
-        <Card>
-          <SettingsRow label="This device">
-            <Button
-              onClick={async () => {
-                await client.auth.logout();
-                queryClient.clear();
-                navigate({ to: "/login", search: { next: undefined } });
-              }}
-            >
-              Log out
-            </Button>
-          </SettingsRow>
-        </Card>
-      </SettingsGroup>
+      <SessionsGroup
+        onLogout={async () => {
+          await client.auth.logout();
+          queryClient.clear();
+          navigate({ to: "/login", search: { next: undefined } });
+        }}
+      />
     </>
+  );
+}
+
+/** "Safari on macOS" from a user agent. Coarse on purpose: it only has to tell your own devices apart. */
+function deviceName(ua: string | null) {
+  if (!ua) return "Unknown device";
+  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : null;
+  const os = /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : /Mac OS X/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : null;
+  if (browser && os) return `${browser} on ${os}`;
+  return browser ?? os ?? ua.slice(0, 40);
+}
+
+function SessionsGroup({ onLogout }: { onLogout: () => void }) {
+  const key = orpc.auth.sessions.queryKey();
+  const list = useQuery(orpc.auth.sessions.queryOptions());
+  const revoke = useMutation({
+    mutationFn: (id: string) => client.auth.revokeSession({ id }),
+    onMutate: (id) => {
+      const prev = queryClient.getQueryData<UserSession[]>(key);
+      queryClient.setQueryData<UserSession[]>(key, (l) => l?.filter((x) => x.id !== id));
+      return { prev };
+    },
+    onError: (e, _id, ctx) => {
+      queryClient.setQueryData(key, ctx?.prev);
+      toast.error(`Couldn't sign out that device: ${errorMessage(e)}`);
+    },
+  });
+  return (
+    <SettingsGroup title="Sessions">
+      <Card>
+        {(list.data ?? []).map((sess) => (
+          <SettingsRow
+            key={sess.id}
+            label={sess.current ? `${deviceName(sess.userAgent)} · this device` : deviceName(sess.userAgent)}
+            description={`${sess.ip ?? "Unknown IP"} · signed in ${ago(sess.createdAt, { long: true })}`}
+          >
+            {sess.current ? <Button onClick={onLogout}>Log out</Button> : <Button onClick={() => revoke.mutate(sess.id)}>Sign out</Button>}
+          </SettingsRow>
+        ))}
+      </Card>
+    </SettingsGroup>
   );
 }
 
