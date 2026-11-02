@@ -91,21 +91,64 @@ jobs:
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: apps/desktop/src-tauri
+      # Fail before the long build rather than publishing an unsigned app or one that can't update.
+      - name: Check signing secrets
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          missing=""
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_API_KEY APPLE_API_ISSUER APPLE_API_KEY_P8 TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            [ -n "$(printenv "$name")" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing (see apps/desktop/RELEASING.md)"
+            exit 1
+          fi
+      # notarytool reads the App Store Connect key from a file.
+      - name: Write notarization key
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          path="$RUNNER_TEMP/AuthKey_$APPLE_API_KEY.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$path"
+          echo "APPLE_API_KEY_PATH=$path" >> "$GITHUB_ENV"
       - run: bun install --frozen-lockfile
+      # Updater artifacts only in CI, so local builds don't need the updater key.
       - name: Set app version
         env:
           VERSION: ${{ needs.plan.outputs.version }}
         working-directory: apps/desktop/src-tauri
-        run: jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp && mv tauri.conf.tmp tauri.conf.json
-      # Unsigned until Apple signing secrets are added (see tauri-action docs).
+        run: jq --arg v "$VERSION" '.version = $v | .bundle.createUpdaterArtifacts = true' tauri.conf.json > tauri.conf.tmp && mv tauri.conf.tmp tauri.conf.json
+      # Signs with the Developer ID certificate, notarizes and staples, then uploads the app, the DMG,
+      # the signed updater archive and latest.json, which installed apps poll for updates.
       - uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tauriScript: bun run tauri
           args: --target universal-apple-darwin
           releaseId: ${{ needs.approve.outputs.release_id }}
+      - name: Verify signature and notarization
+        working-directory: apps/desktop/src-tauri/target/universal-apple-darwin/release/bundle
+        run: |
+          codesign --verify --deep --strict --verbose=2 macos/mado.app
+          xcrun stapler validate macos/mado.app
+          spctl --assess --type execute --verbose=2 macos/mado.app
+          ls macos/*.app.tar.gz macos/*.app.tar.gz.sig
 
   publish:
     name: Publish release

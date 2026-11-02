@@ -14,11 +14,13 @@ let nextId = 1;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
+/** `duration: 0` keeps the toast until its action runs or it is dismissed. */
 export function toast(text: string, opts: { action?: Toast["action"]; tone?: Toast["tone"]; duration?: number } = {}) {
   const id = nextId++;
   toasts = [...toasts.slice(-3), { id, text, action: opts.action, tone: opts.tone }];
   emit();
-  setTimeout(() => dismiss(id), opts.duration ?? (opts.action ? 6000 : 3500));
+  const duration = opts.duration ?? (opts.action ? 6000 : 3500);
+  if (duration > 0) setTimeout(() => dismiss(id), duration);
   return id;
 }
 toast.error = (text: string) => toast(text, { tone: "error" });
