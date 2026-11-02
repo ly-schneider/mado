@@ -1,5 +1,5 @@
 import { type GrantLevel, levelAllows, type ResourceType } from "@mado/contract";
-import { docs, memberships, projects } from "@mado/db";
+import { docs, memberships, projects, users } from "@mado/db";
 import { Injectable } from "@nestjs/common";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { DbService } from "../db";
@@ -26,6 +26,18 @@ export class AccessService {
   requireAccount(actor: Actor): Extract<Actor, { type: "user" | "agent" }> {
     if (actor.type !== "user" && actor.type !== "agent") throw new AppError("UNAUTHORIZED", "Sign in required");
     return actor;
+  }
+
+  /** Instance-wide settings. Agents never qualify, even when their user is an admin. */
+  async requireAdmin(actor: Actor) {
+    const user = this.requireUser(actor);
+    if (!(await this.isAdmin(user.userId))) throw forbidden("Only an instance admin can do this");
+    return user;
+  }
+
+  async isAdmin(userId: string) {
+    const [row] = await this.dbs.db.select({ isAdmin: users.isAdmin }).from(users).where(eq(users.id, userId));
+    return row?.isAdmin ?? false;
   }
 
   async role(userId: string, workspaceId: string) {

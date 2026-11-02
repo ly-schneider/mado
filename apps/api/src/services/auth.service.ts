@@ -26,7 +26,7 @@ export function sessionToken(req: { cookies?: Record<string, string>; headers: R
 type UserRow = typeof users.$inferSelect;
 
 export function toMe(u: UserRow): Me {
-  return { id: u.id, email: u.email, name: u.name, initials: initials(u.name), theme: u.theme, accent: u.accent };
+  return { id: u.id, email: u.email, name: u.name, initials: initials(u.name), theme: u.theme, accent: u.accent, isAdmin: u.isAdmin };
 }
 
 function sameSecret(a: string, b: string) {
@@ -67,18 +67,18 @@ export class AuthService implements OnApplicationBootstrap {
     return (row?.n ?? 0) === 0;
   }
 
-  async createUser(input: { name: string; email: string; password: string }, db: Db | Tx = this.dbs.db) {
+  async createUser(input: { name: string; email: string; password: string }, db: Db | Tx = this.dbs.db, opts: { admin?: boolean } = {}) {
     const email = input.email.trim().toLowerCase();
     const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
     if (existing) throw conflict("An account with this email already exists");
     const [user] = await db
       .insert(users)
-      .values({ name: input.name.trim(), email, passwordHash: await hashPassword(input.password) })
+      .values({ name: input.name.trim(), email, passwordHash: await hashPassword(input.password), isAdmin: opts.admin ?? false })
       .returning();
     return user!;
   }
 
-  /** First-run: the very first account becomes the instance owner. */
+  /** First-run: the very first account becomes the instance admin. */
   async setup(input: { name: string; email: string; password: string; token?: string }, ip: string | null = null) {
     await this.limits.check(ipKeys(ip));
     if (!input.token || !this.setupToken || !sameSecret(input.token, this.setupToken)) {
@@ -90,7 +90,7 @@ export class AuthService implements OnApplicationBootstrap {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext('mado.setup'))`);
       const [row] = await tx.select({ n: count() }).from(users);
       if ((row?.n ?? 0) > 0) throw conflict("Setup is already done");
-      return this.createUser(input, tx);
+      return this.createUser(input, tx, { admin: true });
     });
     this.setupToken = null;
     return user;

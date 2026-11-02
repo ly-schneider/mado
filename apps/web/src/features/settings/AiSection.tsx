@@ -5,6 +5,7 @@ import { ArrowUpRight } from "@mado/ui/fluent";
 import { useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { toast } from "../../lib/toast";
+import { useMe } from "../../lib/workspace";
 import { ConfirmDialog, EmptyLine, InlineInput, SettingsGroup, SettingsRow, touchInput } from "./shared";
 
 const FEATURES: { key: keyof AiSettings["models"]; title: string }[] = [
@@ -16,6 +17,7 @@ const FEATURES: { key: keyof AiSettings["models"]; title: string }[] = [
 
 export function AiSection() {
   const ai = useQuery(orpc.settings.ai.queryOptions());
+  const admin = useMe().data?.isAdmin ?? false;
   const key = orpc.settings.ai.queryKey();
   const [apiKey, setApiKey] = useState("");
   const [replacing, setReplacing] = useState(false);
@@ -42,7 +44,7 @@ export function AiSection() {
   if (ai.isPending) return <Spinner className="self-center" />;
   if (ai.isError) return <EmptyLine>{errorMessage(ai.error)}</EmptyLine>;
   const s = ai.data;
-  const showInput = !s.hasKey || replacing;
+  const showInput = admin && (!s.hasKey || replacing);
 
   return (
     <>
@@ -85,19 +87,20 @@ export function AiSection() {
             </form>
           ) : (
             <SettingsRow label="API key">
-              <span className="text-sm text-ink-muted">Saved</span>
-              <div className="-mr-2 flex gap-1">
+              <span className="text-sm text-ink-muted">{s.hasKey ? "Saved" : "Not set"}</span>
+              {admin && <div className="-mr-2 flex gap-1">
                 <Button size="sm" variant="ghost" onClick={() => setReplacing(true)}>
                   Replace
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(true)}>
                   Remove
                 </Button>
-              </div>
+              </div>}
             </SettingsRow>
           )}
         </Card>
         <p className="px-1 text-label text-ink-subtle">
+          {!admin && "The key and models apply to the whole instance, so only an instance admin can change them. "}
           Only the item you run an AI action on is sent to openrouter.ai, nothing in the background.{" "}
           <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-accent">
             Get a key <ArrowUpRight className="size-3.5" />
@@ -109,13 +112,17 @@ export function AiSection() {
         <Card>
           {FEATURES.map((f) => (
             <SettingsRow key={f.key} label={f.title} stack>
-              <InlineInput
-                label={`${f.title} model`}
-                className="sm:w-64"
-                placeholder="anthropic/claude-sonnet-5"
-                value={s.models[f.key]}
-                onSave={(model) => save.mutate({ models: { [f.key]: model } }, { onSuccess: () => toast(`${f.title} use ${model}`) })}
-              />
+              {admin ? (
+                <InlineInput
+                  label={`${f.title} model`}
+                  className="sm:w-64"
+                  placeholder="anthropic/claude-sonnet-5"
+                  value={s.models[f.key]}
+                  onSave={(model) => save.mutate({ models: { [f.key]: model } }, { onSuccess: () => toast(`${f.title} use ${model}`) })}
+                />
+              ) : (
+                <span className="min-w-0 truncate text-sm text-ink-muted">{s.models[f.key]}</span>
+              )}
             </SettingsRow>
           ))}
         </Card>

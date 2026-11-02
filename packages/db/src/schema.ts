@@ -57,6 +57,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
+  /** Instance admin: changes instance-wide settings (AI key, who may create workspaces) and other admins. */
+  isAdmin: boolean("is_admin").notNull().default(false),
   theme: text("theme").$type<"system" | "dark" | "light">().notNull().default("system"),
   /** Any hex colour; links, focus and selection use it. */
   accent: text("accent").notNull().default("#58a0f9"),

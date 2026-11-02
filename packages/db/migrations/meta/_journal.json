@@ -43,6 +43,13 @@
       "when": 1793647777739,
       "tag": "0005_auth_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793648152218,
+      "tag": "0006_instance_admin",
+      "breakpoints": true
     }
   ]
 }

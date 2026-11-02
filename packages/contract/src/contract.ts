@@ -356,6 +356,12 @@ export const contract = {
 
   settings: {
     instance: oc.output(type<T.InstanceInfo>()),
+    /** Instance admins only. */
+    updateInstance: oc.input(z.object({ membersCanCreateWorkspaces: z.boolean() })).output(type<T.InstanceInfo>()),
+    /** Instance admins only: every account on this instance. */
+    users: oc.output(type<T.InstanceUser[]>()),
+    /** Instance admins only. The last admin can't be removed. */
+    setAdmin: oc.input(z.object({ userId: uuid, admin: z.boolean() })).output(type<T.InstanceUser[]>()),
     ai: oc.output(type<T.AiSettings>()),
     updateAi: oc
       .input(

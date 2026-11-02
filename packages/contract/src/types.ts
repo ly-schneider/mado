@@ -32,6 +32,7 @@ export interface Me {
   initials: string;
   theme: "system" | "dark" | "light";
   accent: Accent;
+  isAdmin: boolean;
 }
 
 export interface UserSession {
@@ -434,4 +435,16 @@ export interface InstanceInfo {
   publicUrl: string;
   mcpUrl: string;
   lastBackupAt: ISODate | null;
+  membersCanCreateWorkspaces: boolean;
+  /** Whether the caller may create a workspace: admins always, others when the setting above is on. */
+  canCreateWorkspaces: boolean;
+}
+
+export interface InstanceUser {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+  isAdmin: boolean;
+  createdAt: ISODate;
 }

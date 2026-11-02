@@ -11,6 +11,7 @@ import { AccessService } from "./access.service";
 import { AuditService } from "./audit.service";
 import { AuthService } from "./auth.service";
 import { ipKeys, RateLimitService } from "./rate-limit.service";
+import { SettingsService } from "./settings.service";
 
 function slugify(name: string) {
   return (
@@ -31,6 +32,7 @@ export class WorkspaceService {
     private readonly audit: AuditService,
     private readonly auth: AuthService,
     private readonly limits: RateLimitService,
+    private readonly settings: SettingsService,
   ) {}
 
   async projectsFor(workspaceIds: string[]): Promise<Project[]> {
@@ -87,6 +89,7 @@ export class WorkspaceService {
 
   async create(actor: Actor, input: { name: string; project: { name: string; key: string } }) {
     const user = this.access.requireUser(actor);
+    if (!(await this.settings.canCreateWorkspaces(user.userId))) throw forbidden("Only an instance admin can create workspaces");
     const [taken] = await this.dbs.db.select({ id: projects.id }).from(projects).where(eq(projects.key, input.project.key));
     if (taken) throw conflict(`Key ${input.project.key} is already used`);
     let slug = slugify(input.name);

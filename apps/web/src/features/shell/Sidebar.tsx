@@ -94,6 +94,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const navigate = useNavigate();
   const { resolved } = useTheme();
   const { data: unread } = useQuery(orpc.inbox.unread.queryOptions({ refetchInterval: 30_000 }));
+  const { data: instance } = useQuery(orpc.settings.instance.queryOptions({ staleTime: 300_000 }));
 
 
   return (
@@ -137,9 +138,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {w.name}
               </Menu.Item>
             ))}
-            <Menu.Item icon={<Plus />} onClick={() => navigate({ to: "/onboarding" })}>
-              Create workspace
-            </Menu.Item>
+            {instance?.canCreateWorkspaces && (
+              <Menu.Item icon={<Plus />} onClick={() => navigate({ to: "/onboarding" })}>
+                Create workspace
+              </Menu.Item>
+            )}
             <Menu.Separator />
             <Menu.Item icon={<Settings2 />} onClick={() => navigate({ to: "/$ws/settings/$section", params: { ws: ws.slug, section: "workspace" } })}>
               Workspace settings

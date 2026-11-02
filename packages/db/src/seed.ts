@@ -47,16 +47,16 @@ if (reset) {
 
 // ── Users ───────────────────────────────────────────────────────────────
 
-async function ensureUser(name: string, email: string) {
+async function ensureUser(name: string, email: string, isAdmin = false) {
   const [existing] = await db.select().from(s.users).where(sql`${s.users.email} = ${email}`);
   if (existing) return existing.id;
   const [u] = await db
     .insert(s.users)
-    .values({ name, email, passwordHash: await Bun.password.hash("mado-demo-2026", { algorithm: "argon2id" }), theme: "dark", createdAt: days(30) })
+    .values({ name, email, passwordHash: await Bun.password.hash("mado-demo-2026", { algorithm: "argon2id" }), theme: "dark", isAdmin, createdAt: days(30) })
     .returning();
   return u!.id;
 }
-const alex = await ensureUser("Alex Meyer", "alex@example.com");
+const alex = await ensureUser("Alex Meyer", "alex@example.com", true);
 const sam = await ensureUser("Sam Keller", "sam@example.com");
 
 type ActorRef = { type: s.ActorType; id: string; name: string; sessionId?: string | null };
