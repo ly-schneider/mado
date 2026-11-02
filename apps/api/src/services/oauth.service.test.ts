@@ -7,6 +7,7 @@ import { isAllowedRedirectUri, redirectUriMatches, verifyPkce } from "../lib/age
 import { AccessService } from "./access.service";
 import { AgentService } from "./agent.service";
 import { OAuthError, OAuthService } from "./oauth.service";
+import { RateLimitService } from "./rate-limit.service";
 
 const challengeFor = (verifier: string) => createHash("sha256").update(verifier).digest("base64url");
 
@@ -56,7 +57,7 @@ describe("token endpoint (database)", () => {
   const access = new AccessService(dbs);
   // Revert needs the domain services; the token flow doesn't touch them.
   const agents = new AgentService(dbs, access, ...([{}, {}, {}, {}] as [never, never, never, never]));
-  const oauth = new OAuthService(dbs, access, agents);
+  const oauth = new OAuthService(dbs, access, agents, new RateLimitService(dbs));
   let actor: Actor;
   let clientId: string;
   const redirect = "http://localhost:4999/callback";

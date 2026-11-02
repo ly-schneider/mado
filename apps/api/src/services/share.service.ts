@@ -1,7 +1,6 @@
 import { type ExpiryOption, expiryToDate, type GuestSession, type ShareLink } from "@mado/contract";
 import { docs, shareLinks, workspaces } from "@mado/db";
 import { Injectable } from "@nestjs/common";
-import { ORPCError } from "@orpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { config } from "../config";
 import { DbService } from "../db";
@@ -11,11 +10,10 @@ import { AppError, badRequest, notFound } from "../lib/errors";
 import { AccessService } from "./access.service";
 import { AuditService } from "./audit.service";
 import { DocService, guestName } from "./doc.service";
+import { ipKeys, type LimitKey, POLICIES, RateLimitService } from "./rate-limit.service";
 
 type LinkRow = typeof shareLinks.$inferSelect;
 
-const PIN_MAX_FAILURES = 5;
-const PIN_LOCK_MS = 15 * 60_000;
 const LAST_USED_THROTTLE_MS = 60_000;
 
 /**
@@ -24,14 +22,12 @@ const LAST_USED_THROTTLE_MS = 60_000;
  */
 @Injectable()
 export class ShareService {
-  /** Wrong PIN attempts per link. In memory: a restart resets it, which is fine for a single instance. */
-  private readonly failures = new Map<string, { count: number; lockedUntil: number }>();
-
   constructor(
     private readonly dbs: DbService,
     private readonly access: AccessService,
     private readonly audit: AuditService,
     private readonly docs: DocService,
+    private readonly limits: RateLimitService,
   ) {}
 
   private url(row: LinkRow) {
@@ -123,27 +119,22 @@ export class ShareService {
    * Validates a token (+ PIN) and returns the guest actor. A missing or wrong PIN throws
    * UNAUTHORIZED with data.pinRequired so the guest page can ask for it.
    */
-  async guestActor(token: string, pin?: string): Promise<{ actor: Extract<Actor, { type: "guest" }>; link: LinkRow }> {
+  async guestActor(token: string, pin?: string, ip: string | null = null): Promise<{ actor: Extract<Actor, { type: "guest" }>; link: LinkRow }> {
     const [link] = await this.dbs.db.select().from(shareLinks).where(eq(shareLinks.tokenHash, sha256(token)));
     const gone = () => new AppError("NOT_FOUND", "This link is no longer valid", { linkInvalid: true });
     if (!link || link.revokedAt) throw gone();
     if (link.expiresAt && link.expiresAt < new Date()) throw new AppError("NOT_FOUND", "This link has expired", { linkInvalid: true, expired: true });
 
     if (link.pinHash) {
-      const state = this.failures.get(link.id);
-      if (state && state.lockedUntil > Date.now()) {
-        throw new ORPCError("TOO_MANY_REQUESTS", {
-          message: "Too many wrong PINs. Try again later.",
-          data: { pinRequired: true, retryAfter: Math.ceil((state.lockedUntil - Date.now()) / 1000) },
-        });
-      }
+      const linkKey: LimitKey = { kind: "pin", id: link.id };
+      const keys = [linkKey, ...ipKeys(ip)];
+      await this.limits.check(keys, { pinRequired: true });
       if (!pin) throw new AppError("UNAUTHORIZED", "PIN required", { pinRequired: true });
       if (!(await Bun.password.verify(pin, link.pinHash))) {
-        const count = (state && state.lockedUntil > 0 && state.lockedUntil <= Date.now() ? 0 : (state?.count ?? 0)) + 1;
-        this.failures.set(link.id, { count, lockedUntil: count >= PIN_MAX_FAILURES ? Date.now() + PIN_LOCK_MS : 0 });
-        throw new AppError("UNAUTHORIZED", "Wrong PIN", { pinRequired: true, wrongPin: true, attemptsLeft: Math.max(0, PIN_MAX_FAILURES - count) });
+        const [count = 0] = await this.limits.fail(keys);
+        throw new AppError("UNAUTHORIZED", "Wrong PIN", { pinRequired: true, wrongPin: true, attemptsLeft: Math.max(0, POLICIES.pin.limit - count) });
       }
-      this.failures.delete(link.id);
+      await this.limits.clear([linkKey]);
     }
 
     const [root] = await this.dbs.db.select({ deletedAt: docs.deletedAt }).from(docs).where(eq(docs.id, link.docId));
@@ -165,8 +156,8 @@ export class ShareService {
     };
   }
 
-  async open(token: string, pin?: string): Promise<GuestSession> {
-    const { actor, link } = await this.guestActor(token, pin);
+  async open(token: string, pin?: string, ip: string | null = null): Promise<GuestSession> {
+    const { actor, link } = await this.guestActor(token, pin, ip);
     const [ws] = await this.dbs.db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, link.workspaceId));
     const tree = await this.docs.tree(actor, link.workspaceId);
     return {
@@ -179,24 +170,24 @@ export class ShareService {
     };
   }
 
-  async guestGet(token: string, pin: string | undefined, docId: string) {
-    const { actor } = await this.guestActor(token, pin);
+  async guestGet(token: string, pin: string | undefined, docId: string, ip: string | null = null) {
+    const { actor } = await this.guestActor(token, pin, ip);
     return this.docs.get(actor, docId);
   }
 
-  async guestSave(token: string, pin: string | undefined, input: { docId: string; title?: string; content?: string }) {
-    const { actor } = await this.guestActor(token, pin);
+  async guestSave(token: string, pin: string | undefined, input: { docId: string; title?: string; content?: string }, ip: string | null = null) {
+    const { actor } = await this.guestActor(token, pin, ip);
     const r = await this.docs.save(actor, { id: input.docId, title: input.title, content: input.content });
     return { revisionNumber: r.revisionNumber, updatedAt: r.updatedAt };
   }
 
-  async guestCreate(token: string, pin: string | undefined, input: { parentId: string; title: string }) {
-    const { actor, link } = await this.guestActor(token, pin);
+  async guestCreate(token: string, pin: string | undefined, input: { parentId: string; title: string }, ip: string | null = null) {
+    const { actor, link } = await this.guestActor(token, pin, ip);
     return this.docs.create(actor, { workspaceId: link.workspaceId, parentId: input.parentId, title: input.title, content: "" });
   }
 
-  async guestDelete(token: string, pin: string | undefined, docId: string) {
-    const { actor } = await this.guestActor(token, pin);
+  async guestDelete(token: string, pin: string | undefined, docId: string, ip: string | null = null) {
+    const { actor } = await this.guestActor(token, pin, ip);
     await this.docs.delete(actor, docId);
   }
 }

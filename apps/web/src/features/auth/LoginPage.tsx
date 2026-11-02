@@ -67,9 +67,12 @@ export function LoginPage() {
 }
 
 function loginError(error: unknown) {
-  const code = (error as { code?: string }).code;
+  const { code, data } = error as { code?: string; data?: { retryAfter?: number } };
   if (code === "UNAUTHORIZED" || code === "BAD_REQUEST") return "Email or password is wrong.";
-  if (code === "TOO_MANY_REQUESTS") return "Too many attempts. Wait a minute and try again.";
+  if (code === "TOO_MANY_REQUESTS") {
+    const minutes = Math.max(1, Math.ceil((data?.retryAfter ?? 60) / 60));
+    return `Too many attempts. Try again in ${minutes === 1 ? "a minute" : `${minutes} minutes`}.`;
+  }
   return errorMessage(error);
 }
 

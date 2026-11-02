@@ -21,9 +21,9 @@ export const workspaceRouter = (s: Services) => ({
     await s.workspace.revokeInvite(context.actor, input.id);
     return { ok: true as const };
   }),
-  previewInvite: os.workspace.previewInvite.handler(({ input }) => s.workspace.previewInvite(input.token)),
+  previewInvite: os.workspace.previewInvite.handler(({ input, context }) => s.workspace.previewInvite(input.token, context.ip)),
   acceptInvite: os.workspace.acceptInvite.handler(async ({ input, context }) => {
-    const result = await s.workspace.acceptInvite(input.token, context.actor, input.account);
+    const result = await s.workspace.acceptInvite(input.token, context.actor, input.account, context.ip);
     if (result.createdUser) {
       const token = await s.auth.createSession(result.userId, clientInfo(context));
       setSession(context.req, context.res, token);

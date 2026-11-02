@@ -596,6 +596,17 @@ export const leads = pgTable(
 // ── Settings ────────────────────────────────────────────────────────────
 
 /** Instance-wide key/value settings. Secrets are stored encrypted (AES-GCM) in valueEnc. */
+/**
+ * Failed sign-in, token and PIN attempts per key ("account:<email>", "ip:<addr>", "pin:<link>", ...).
+ * In Postgres so a restart doesn't reset the counters.
+ */
+export const authAttempts = pgTable("auth_attempts", {
+  key: text("key").primaryKey(),
+  failures: integer("failures").notNull(),
+  lastFailureAt: timestamp("last_failure_at", { withTimezone: true }).notNull(),
+  blockedUntil: timestamp("blocked_until", { withTimezone: true }),
+});
+
 export const settings = pgTable("settings", {
   key: text("key").primaryKey(),
   value: jsonb("value"),

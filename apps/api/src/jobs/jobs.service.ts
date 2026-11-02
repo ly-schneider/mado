@@ -4,6 +4,7 @@ import { and, isNotNull, lt, or } from "drizzle-orm";
 import type { PgBoss } from "pg-boss";
 import { config } from "../config";
 import { DbService } from "../db";
+import { RateLimitService } from "../services/rate-limit.service";
 import { TrashService } from "../services/trash.service";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -26,6 +27,7 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly dbs: DbService,
     private readonly trash: TrashService,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   async onModuleInit() {
@@ -87,8 +89,9 @@ export class JobsService implements OnModuleInit, OnModuleDestroy {
       .delete(agentTokens)
       .where(or(and(isNotNull(agentTokens.revokedAt), lt(agentTokens.revokedAt, monthAgo)), lt(agentTokens.expiresAt, monthAgo)))
       .returning({ id: agentTokens.id });
+    const attempts = await this.rateLimit.prune();
     this.log.log(
-      `cleanup: ${expiredSessions.length} sessions, ${staleCodes.length} oauth codes, ${deadTokens.length} tokens`,
+      `cleanup: ${expiredSessions.length} sessions, ${staleCodes.length} oauth codes, ${deadTokens.length} tokens, ${attempts} auth attempts`,
     );
   }
 }

@@ -10,6 +10,7 @@ import { AppError, badRequest, conflict, forbidden, notFound } from "../lib/erro
 import { AccessService } from "./access.service";
 import { AuditService } from "./audit.service";
 import { AuthService } from "./auth.service";
+import { ipKeys, RateLimitService } from "./rate-limit.service";
 
 function slugify(name: string) {
   return (
@@ -29,6 +30,7 @@ export class WorkspaceService {
     private readonly access: AccessService,
     private readonly audit: AuditService,
     private readonly auth: AuthService,
+    private readonly limits: RateLimitService,
   ) {}
 
   async projectsFor(workspaceIds: string[]): Promise<Project[]> {
@@ -247,19 +249,22 @@ export class WorkspaceService {
     await this.dbs.db.update(invites).set({ revokedAt: new Date() }).where(eq(invites.id, id));
   }
 
-  private async findInvite(token: string) {
+  /** Unknown tokens count as failed attempts for the caller's IP, so links can't be guessed. */
+  private async findInvite(token: string, ip: string | null) {
+    await this.limits.check(ipKeys(ip));
     const [row] = await this.dbs.db
       .select({ inv: invites, ws: workspaces, by: users })
       .from(invites)
       .innerJoin(workspaces, eq(workspaces.id, invites.workspaceId))
       .innerJoin(users, eq(users.id, invites.createdById))
       .where(eq(invites.tokenHash, sha256(token)));
+    if (!row) await this.limits.fail(ipKeys(ip));
     if (!row || row.inv.revokedAt || row.inv.acceptedAt) throw notFound("Invite");
     return row;
   }
 
-  async previewInvite(token: string): Promise<InvitePreview> {
-    const { inv, ws, by } = await this.findInvite(token);
+  async previewInvite(token: string, ip: string | null = null): Promise<InvitePreview> {
+    const { inv, ws, by } = await this.findInvite(token, ip);
     return {
       workspaceName: ws.name,
       invitedBy: by.name,
@@ -270,8 +275,8 @@ export class WorkspaceService {
   }
 
   /** Accept as the signed-in user, or create an account first. Returns the user that joined. */
-  async acceptInvite(token: string, signedIn: Actor | null, account?: { name: string; email: string; password: string }) {
-    const { inv } = await this.findInvite(token);
+  async acceptInvite(token: string, signedIn: Actor | null, account?: { name: string; email: string; password: string }, ip: string | null = null) {
+    const { inv } = await this.findInvite(token, ip);
     if (inv.expiresAt < new Date()) throw badRequest("This invite has expired");
     let userId: string;
     let createdUser = false;

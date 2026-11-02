@@ -9,6 +9,7 @@ import { DbService } from "../db";
 import { type Actor, initials } from "../lib/actor";
 import { hashPassword, randomToken, sha256, verifyPassword } from "../lib/crypto";
 import { AppError, badRequest, conflict, forbidden } from "../lib/errors";
+import { accountKey, ipKeys, RateLimitService } from "./rate-limit.service";
 
 export const SESSION_COOKIE = "mado_session";
 /**
@@ -42,7 +43,10 @@ export class AuthService implements OnApplicationBootstrap {
    */
   private setupToken: string | null = config.setupToken;
 
-  constructor(private readonly dbs: DbService) {}
+  constructor(
+    private readonly dbs: DbService,
+    private readonly limits: RateLimitService,
+  ) {}
 
   async onApplicationBootstrap() {
     if (!(await this.needsSetup())) return;
@@ -75,8 +79,12 @@ export class AuthService implements OnApplicationBootstrap {
   }
 
   /** First-run: the very first account becomes the instance owner. */
-  async setup(input: { name: string; email: string; password: string; token?: string }) {
-    if (!input.token || !this.setupToken || !sameSecret(input.token, this.setupToken)) throw forbidden("Invalid setup token");
+  async setup(input: { name: string; email: string; password: string; token?: string }, ip: string | null = null) {
+    await this.limits.check(ipKeys(ip));
+    if (!input.token || !this.setupToken || !sameSecret(input.token, this.setupToken)) {
+      await this.limits.fail(ipKeys(ip));
+      throw forbidden("Invalid setup token");
+    }
     const user = await this.dbs.db.transaction(async (tx) => {
       // Serializes concurrent setups so the empty-table check and the insert can't interleave.
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext('mado.setup'))`);
@@ -88,11 +96,18 @@ export class AuthService implements OnApplicationBootstrap {
     return user;
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, ip: string | null = null) {
+    const keys = [accountKey(email), ...ipKeys(ip)];
+    // Checked before the hash so a blocked guess costs nothing and reveals nothing.
+    await this.limits.check(keys);
     const [user] = await this.dbs.db.select().from(users).where(eq(users.email, email.trim().toLowerCase()));
     // Verify against a dummy hash when the user is missing so timing doesn't reveal accounts.
     const ok = await verifyPassword(password, user?.passwordHash ?? "$argon2id$v=19$m=65536,t=2,p=1$c2FsdHNhbHQ$0000000000000000000000000000000000000000000");
-    if (!user || !ok) throw new AppError("UNAUTHORIZED", "Wrong email or password");
+    if (!user || !ok) {
+      await this.limits.fail(keys);
+      throw new AppError("UNAUTHORIZED", "Wrong email or password");
+    }
+    await this.limits.clear([accountKey(email)]);
     return user;
   }
 
@@ -147,9 +162,16 @@ export class AuthService implements OnApplicationBootstrap {
     return user!;
   }
 
-  async changePassword(userId: string, current: string, next: string) {
+  async changePassword(userId: string, current: string, next: string, ip: string | null = null) {
     const [user] = await this.dbs.db.select().from(users).where(eq(users.id, userId));
-    if (!user || !(await verifyPassword(current, user.passwordHash))) throw badRequest("Current password is wrong");
+    if (!user) throw badRequest("Current password is wrong");
+    const keys = [accountKey(user.email), ...ipKeys(ip)];
+    await this.limits.check(keys);
+    if (!(await verifyPassword(current, user.passwordHash))) {
+      await this.limits.fail(keys);
+      throw badRequest("Current password is wrong");
+    }
+    await this.limits.clear([accountKey(user.email)]);
     await this.dbs.db.update(users).set({ passwordHash: await hashPassword(next) }).where(eq(users.id, userId));
   }
 

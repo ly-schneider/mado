@@ -18,14 +18,14 @@ export const authRouter = (s: Services) => ({
   setupStatus: os.auth.setupStatus.handler(async () => ({ needsSetup: await s.auth.needsSetup() })),
 
   setup: os.auth.setup.handler(async ({ input, context }) => {
-    const user = await s.auth.setup(input);
+    const user = await s.auth.setup(input, context.ip);
     const token = await s.auth.createSession(user.id, clientInfo(context));
     setSession(context.req, context.res, token);
     return toMe(user);
   }),
 
   login: os.auth.login.handler(async ({ input, context }) => {
-    const user = await s.auth.login(input.email, input.password);
+    const user = await s.auth.login(input.email, input.password, context.ip);
     const token = await s.auth.createSession(user.id, clientInfo(context));
     setSession(context.req, context.res, token);
     return toMe(user);
@@ -62,7 +62,7 @@ export const authRouter = (s: Services) => ({
 
   changePassword: authed.auth.changePassword.handler(async ({ input, context }) => {
     const user = s.access.requireUser(context.actor);
-    await s.auth.changePassword(user.userId, input.current, input.next);
+    await s.auth.changePassword(user.userId, input.current, input.next, context.ip);
     return { ok: true as const };
   }),
 });

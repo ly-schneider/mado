@@ -2,7 +2,7 @@ import { contract } from "@mado/contract";
 import { implement, ORPCError } from "@orpc/server";
 import type { Request, Response } from "express";
 import type { Actor } from "../lib/actor";
-import { toORPCError } from "../lib/errors";
+import { AppError, toORPCError } from "../lib/errors";
 
 export interface RpcContext {
   req: Request;
@@ -15,10 +15,13 @@ export interface RpcContext {
 const base = implement(contract).$context<RpcContext>();
 
 /** Maps AppError to ORPCError so the client gets a typed code and message. */
-export const os = base.use(async ({ next }) => {
+export const os = base.use(async ({ context, next }) => {
   try {
     return await next();
   } catch (e) {
+    if (e instanceof AppError && e.code === "TOO_MANY_REQUESTS" && typeof e.data?.retryAfter === "number") {
+      context.res.setHeader("Retry-After", String(e.data.retryAfter));
+    }
     throw toORPCError(e);
   }
 });
