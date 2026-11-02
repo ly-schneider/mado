@@ -23,6 +23,7 @@ import {
 } from "@mado/ui/fluent";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands } from "../../lib/shortcuts";
 import { toast } from "../../lib/toast";
 import { pushRecent } from "../../lib/ui";
@@ -415,9 +416,11 @@ function DocScreen({ doc, ws }: { doc: Doc; ws: Workspace }) {
           />
         ) : (
           !phone && (
-            <aside className="hidden w-[280px] shrink-0 flex-col gap-7 overflow-y-auto px-6 pb-6 pt-10 xl:flex" aria-label="Page info">
-              {headings.length > 0 && <Outline title={save.title} headings={headings} active={activeHeading} onJump={jump} />}
-            </aside>
+            <ResizablePanel id="doc-info" side="right" defaultWidth={280} min={220} max={440} className="hidden flex-col xl:flex" aria-label="Page info">
+              <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-6 pb-6 pt-10">
+                {headings.length > 0 && <Outline title={save.title} headings={headings} active={activeHeading} onJump={jump} />}
+              </div>
+            </ResizablePanel>
           )
         )}
       </div>

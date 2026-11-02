@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate, useSearch } from "@tanstack/react-router";
 import { Bot, Brain, Building2, ChevronRight, FolderKanban, Globe, History, Link2, Monitor, Palette, Trash2, User, Users } from "@mado/ui/fluent";
 import { type ReactNode, useState } from "react";
 import { isTauri } from "../../lib/platform";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands } from "../../lib/shortcuts";
 import { useMe, useWorkspace } from "../../lib/workspace";
 import { ConnectedAgents } from "../agents/ConnectedAgents";
@@ -187,7 +188,8 @@ export function SettingsNav({ current, className }: { current: string; className
   const ws = useWorkspace();
   const admin = useMe().data?.isAdmin ?? false;
   return (
-    <nav aria-label="Settings" className={cn("hidden w-[200px] shrink-0 flex-col gap-px overflow-y-auto border-r border-edge px-2 py-3", className)}>
+    <ResizablePanel as="nav" id="settings-nav" side="left" defaultWidth={200} min={168} max={320} aria-label="Settings" className={cn("hidden flex-col border-r border-edge", className)}>
+      <div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2 py-3">
       {GROUPS.map((g, gi) => {
         const items = g.items.filter((s) => visible(s, admin));
         if (items.length === 0) return null;
@@ -210,7 +212,8 @@ export function SettingsNav({ current, className }: { current: string; className
           </div>
         );
       })}
-    </nav>
+      </div>
+    </ResizablePanel>
   );
 }
 

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { History, X } from "@mado/ui/fluent";
 import { Fragment, type ReactNode, useMemo } from "react";
 import { orpc } from "../../lib/orpc";
+import { ResizablePanel } from "../../lib/resizable";
 import { clock, dayGroup, shortDate } from "../../lib/time";
 import { InlineMarkdown, MarkdownView } from "../editor/MarkdownView";
 import { type DiffOp, diffLines } from "./diff";
@@ -50,7 +51,7 @@ export function HistoryPanel({
 
   let lastGroup = "";
   return (
-    <aside className={cn("flex w-80 shrink-0 flex-col border-l border-edge bg-page", className)} aria-label="History">
+    <ResizablePanel id="doc-history" side="right" defaultWidth={320} min={260} max={560} className={cn("flex flex-col border-l border-edge bg-page", className)} aria-label="History">
       <div className="flex h-12 shrink-0 items-center gap-2 pl-4 pr-2">
         <History className="size-4 text-ink-subtle" />
         <span className="text-sm font-semibold text-ink">History</span>
@@ -102,7 +103,7 @@ export function HistoryPanel({
           );
         })}
       </div>
-    </aside>
+    </ResizablePanel>
   );
 }
 

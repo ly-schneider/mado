@@ -6,6 +6,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Archive, ArrowRight, ArrowUpRight, FileText, Mail, MailOpen } from "@mado/ui/fluent";
 import { useEffect, useMemo, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands } from "../../lib/shortcuts";
 import { ago } from "../../lib/time";
 import { toast } from "../../lib/toast";
@@ -202,7 +203,7 @@ export function InboxPage() {
       </PageHeader>
       <MobileTitle title="Inbox" />
       <div className="flex min-h-0 flex-1">
-        <div className="flex min-h-0 w-full flex-col md:w-[400px] md:shrink-0 md:border-r md:border-edge xl:w-[440px]">
+        <ResizablePanel as="div" id="inbox-list" side="left" defaultWidth={420} min={320} max={640} className="flex min-h-0 w-full flex-col md:border-r md:border-edge">
           <Chips value={filter} onChange={changeFilter} options={FILTERS} className="px-4 pb-2 md:pt-3" />
           <div className="min-h-0 flex-1 overflow-y-auto pb-36 md:pb-4">
             {query.isPending && !query.data ? (
@@ -233,7 +234,7 @@ export function InboxPage() {
               ))
             )}
           </div>
-        </div>
+        </ResizablePanel>
         <div className="hidden min-w-0 flex-1 md:flex">
           {selected ? (
             <Detail n={selected} onOpen={() => openEntity(selected)} onArchive={archived ? undefined : archiveSelected} onToggleRead={() => markRead([selected], !selected.readAt)} />

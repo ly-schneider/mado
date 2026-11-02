@@ -17,6 +17,7 @@ import {
 } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";
 import { ago, clock, dayGroup, shortDate } from "../../lib/time";
 import { toast } from "../../lib/toast";
@@ -254,7 +255,7 @@ function AgentDetail({ grantId, onClose }: { grantId: string; onClose: () => voi
 
   const readOnly = !g || g.status === "revoked";
   return (
-    <aside className={cn("flex min-h-0 flex-col bg-page md:w-[352px] md:shrink-0 md:border-l md:border-edge", phone && "flex-1")}>
+    <ResizablePanel id="agent-detail" side="right" defaultWidth={352} min={300} max={560} className={cn("flex min-h-0 flex-col bg-page md:border-l md:border-edge", phone && "flex-1")}>
       {!g ? (
         <div className="flex flex-1 items-center justify-center">{grant.isError ? <span className="text-sm text-ink-subtle">Agent not found</span> : <Spinner />}</div>
       ) : (
@@ -353,7 +354,7 @@ function AgentDetail({ grantId, onClose }: { grantId: string; onClose: () => voi
           {editOpen && <EditGrantDialog grant={g} onClose={() => setEditOpen(false)} />}
         </>
       )}
-    </aside>
+    </ResizablePanel>
   );
 }
 
