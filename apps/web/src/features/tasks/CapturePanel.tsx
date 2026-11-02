@@ -43,6 +43,7 @@ export function CapturePanel({
   setKind,
   initialProjectId,
   initialStatus,
+  initialType,
   onClose,
   variant,
 }: {
@@ -50,6 +51,7 @@ export function CapturePanel({
   setKind: (k: CaptureKind) => void;
   initialProjectId?: string;
   initialStatus?: string;
+  initialType?: TaskType;
   onClose: () => void;
   variant: "panel" | "sheet";
 }) {
@@ -65,7 +67,7 @@ export function CapturePanel({
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [explicit, setExplicit] = useState<Explicit>(() => ({ status: (initialStatus as TaskStatus) || undefined }));
-  const [type, setType] = useState<TaskType>("task");
+  const [type, setType] = useState<TaskType>(initialType ?? "task");
   const [docIds, setDocIds] = useState<string[]>([]);
   const [drafting, setDrafting] = useState(false);
   const [saving, setSaving] = useState(false);

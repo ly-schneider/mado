@@ -16,6 +16,7 @@ import {
   SquareKanban,
   SquarePen,
   Sun,
+  Zap,
 } from "@mado/ui/fluent";
 import type { ReactNode } from "react";
 import { client, orpc, queryClient } from "../../lib/orpc";
@@ -91,6 +92,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { data: workspaces = [] } = useWorkspaces();
   const { data: me } = useMe();
   const path = usePath();
+  const view = useRouterState({ select: (s) => (s.location.search as { view?: string }).view });
   const navigate = useNavigate();
   const { resolved } = useTheme();
   const { data: unread } = useQuery(orpc.inbox.unread.queryOptions({ refetchInterval: 30_000 }));
@@ -198,10 +200,20 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               to="/$ws/p/$key/tasks"
               params={{ ws: ws.slug, key: p.key }}
               icon={<SquareKanban />}
-              active={path.includes(`/p/${p.key}/tasks`) || path.includes(`/t/${p.key}-`)}
+              active={(path.includes(`/p/${p.key}/tasks`) && view !== "epics") || path.includes(`/t/${p.key}-`)}
               onClick={onNavigate}
             >
               Tasks
+            </NavItem>
+            <NavItem
+              to="/$ws/p/$key/tasks"
+              params={{ ws: ws.slug, key: p.key }}
+              search={{ view: "epics" }}
+              icon={<Zap />}
+              active={path.includes(`/p/${p.key}/tasks`) && view === "epics"}
+              onClick={onNavigate}
+            >
+              Epics
             </NavItem>
             <NavItem
               to="/$ws/wiki"

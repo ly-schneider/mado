@@ -1,10 +1,11 @@
+import type { TaskType } from "@mado/contract";
 import { useSyncExternalStore } from "react";
 
 /** Global overlay state shared by the shell, palette, shortcuts and screens. */
 interface UiState {
   paletteOpen: boolean;
   paletteQuery: string;
-  capture: { open: boolean; kind: "task" | "note" | "lead"; projectId?: string; status?: string };
+  capture: { open: boolean; kind: "task" | "note" | "lead"; projectId?: string; status?: string; type?: TaskType };
   sidebarOpen: boolean;
   /** Sidebar row showing an inline title input (new folders start here). */
   renamingDocId: string | null;
@@ -35,7 +36,7 @@ export function useUi<T>(select: (s: UiState) => T): T {
 }
 
 export const openPalette = (query = "") => setUi({ paletteOpen: true, paletteQuery: query });
-export const openCapture = (kind: UiState["capture"]["kind"] = "task", opts: { projectId?: string; status?: string } = {}) =>
+export const openCapture = (kind: UiState["capture"]["kind"] = "task", opts: { projectId?: string; status?: string; type?: TaskType } = {}) =>
   setUi({ capture: { open: true, kind, ...opts } });
 export const closeCapture = () => setUi((s) => ({ capture: { ...s.capture, open: false } }));
 
