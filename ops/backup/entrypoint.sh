@@ -5,10 +5,14 @@ set -eu
 BACKUP_SCHEDULE="${BACKUP_SCHEDULE:-15 2 * * *}"
 RESTORE_TEST_SCHEDULE="${RESTORE_TEST_SCHEDULE:-0 4 1 * *}"
 
-# busybox crond starts jobs with an empty environment, so hand them ours.
-export -p > /etc/backup.env
+# Installs from before the role split: hand mado's objects to a non-superuser mado_owner first.
+/usr/local/bin/upgrade-roles --if-needed
+touch /tmp/ready
+
+# busybox crond starts jobs with an empty environment, so hand them ours. /tmp: the root filesystem is read-only.
+export -p > /tmp/backup.env
 # Job output goes to the container log.
-run() { echo "$1 . /etc/backup.env; $2 > /proc/1/fd/1 2> /proc/1/fd/2"; }
+run() { echo "$1 . /tmp/backup.env; $2 > /proc/1/fd/1 2> /proc/1/fd/2"; }
 
 {
   run "$BACKUP_SCHEDULE" /usr/local/bin/backup

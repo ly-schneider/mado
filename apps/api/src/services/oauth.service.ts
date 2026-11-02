@@ -1,7 +1,7 @@
 import type { ConsentRequest, GrantInput } from "@mado/contract";
 import { agentGrants, agentTokens, oauthClients, oauthCodes, type Tx, users } from "@mado/db";
 import { Injectable } from "@nestjs/common";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, lt, notExists } from "drizzle-orm";
 import { DbService } from "../db";
 import type { Actor } from "../lib/actor";
 import { isAllowedRedirectUri, isOurResource, MCP_RESOURCE, redirectUriMatches, verifyPkce } from "../lib/agent-auth";
@@ -9,6 +9,7 @@ import { randomToken, sha256 } from "../lib/crypto";
 import { AppError } from "../lib/errors";
 import { AccessService } from "./access.service";
 import { AgentService } from "./agent.service";
+import { ipKeys, RateLimitService } from "./rate-limit.service";
 
 const REQUEST_TTL_MS = 10 * 60_000;
 const CODE_TTL_MS = 5 * 60_000;
@@ -55,11 +56,13 @@ export class OAuthService {
     private readonly dbs: DbService,
     private readonly access: AccessService,
     private readonly agents: AgentService,
+    private readonly limits: RateLimitService,
   ) {}
 
   // ── Dynamic Client Registration (RFC 7591) ──────────────────────────
 
-  async register(body: Record<string, unknown>) {
+  async register(body: Record<string, unknown>, ip: string | null = null) {
+    if (ip) await this.limits.hit({ kind: "register", id: ip });
     const redirectUris = body.redirect_uris;
     if (!Array.isArray(redirectUris) || redirectUris.length === 0 || redirectUris.length > 10) {
       throw new OAuthError("invalid_redirect_uri", "redirect_uris must be a non-empty array");
@@ -209,11 +212,35 @@ export class OAuthService {
     };
   }
 
+  /**
+   * Registration is open to anyone, so clients that never got a grant are dropped after a day.
+   * Runs as the purge role: the app role can't delete clients.
+   */
+  async pruneUnusedClients(olderThan = new Date(Date.now() - 86_400_000)) {
+    const rows = await this.dbs.purgeDb
+      .delete(oauthClients)
+      .where(
+        and(
+          eq(oauthClients.verified, false),
+          lt(oauthClients.createdAt, olderThan),
+          notExists(this.dbs.purgeDb.select().from(agentGrants).where(eq(agentGrants.clientId, oauthClients.clientId))),
+        ),
+      )
+      .returning({ clientId: oauthClients.clientId });
+    return rows.length;
+  }
+
   // ── Token ───────────────────────────────────────────────────────────
 
-  async token(p: Params): Promise<TokenResponse> {
-    if (p.grant_type === "authorization_code") return this.exchangeCode(p);
-    if (p.grant_type === "refresh_token") return this.refresh(p);
+  async token(p: Params, ip: string | null = null): Promise<TokenResponse> {
+    await this.limits.check(ipKeys(ip));
+    try {
+      if (p.grant_type === "authorization_code") return await this.exchangeCode(p);
+      if (p.grant_type === "refresh_token") return await this.refresh(p);
+    } catch (e) {
+      if (e instanceof OAuthError && e.error === "invalid_grant") await this.limits.fail(ipKeys(ip));
+      throw e;
+    }
     throw new OAuthError("unsupported_grant_type", "grant_type must be authorization_code or refresh_token");
   }
 

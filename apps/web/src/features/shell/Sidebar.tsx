@@ -16,6 +16,7 @@ import {
   SquareKanban,
   SquarePen,
   Sun,
+  Zap,
 } from "@mado/ui/fluent";
 import type { ReactNode } from "react";
 import { client, orpc, queryClient } from "../../lib/orpc";
@@ -91,9 +92,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { data: workspaces = [] } = useWorkspaces();
   const { data: me } = useMe();
   const path = usePath();
+  const view = useRouterState({ select: (s) => (s.location.search as { view?: string }).view });
   const navigate = useNavigate();
   const { resolved } = useTheme();
   const { data: unread } = useQuery(orpc.inbox.unread.queryOptions({ refetchInterval: 30_000 }));
+  const { data: instance } = useQuery(orpc.settings.instance.queryOptions({ staleTime: 300_000 }));
 
 
   return (
@@ -137,9 +140,11 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 {w.name}
               </Menu.Item>
             ))}
-            <Menu.Item icon={<Plus />} onClick={() => navigate({ to: "/onboarding" })}>
-              Create workspace
-            </Menu.Item>
+            {instance?.canCreateWorkspaces && (
+              <Menu.Item icon={<Plus />} onClick={() => navigate({ to: "/onboarding" })}>
+                Create workspace
+              </Menu.Item>
+            )}
             <Menu.Separator />
             <Menu.Item icon={<Settings2 />} onClick={() => navigate({ to: "/$ws/settings/$section", params: { ws: ws.slug, section: "workspace" } })}>
               Workspace settings
@@ -195,10 +200,20 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               to="/$ws/p/$key/tasks"
               params={{ ws: ws.slug, key: p.key }}
               icon={<SquareKanban />}
-              active={path.includes(`/p/${p.key}/tasks`) || path.includes(`/t/${p.key}-`)}
+              active={(path.includes(`/p/${p.key}/tasks`) && view !== "epics") || path.includes(`/t/${p.key}-`)}
               onClick={onNavigate}
             >
               Tasks
+            </NavItem>
+            <NavItem
+              to="/$ws/p/$key/tasks"
+              params={{ ws: ws.slug, key: p.key }}
+              search={{ view: "epics" }}
+              icon={<Zap />}
+              active={path.includes(`/p/${p.key}/tasks`) && view === "epics"}
+              onClick={onNavigate}
+            >
+              Epics
             </NavItem>
             <NavItem
               to="/$ws/wiki"

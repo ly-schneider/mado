@@ -31,6 +31,7 @@ export function QuickCapture() {
           setKind={setKind}
           initialProjectId={capture.projectId}
           initialStatus={capture.status}
+          initialType={capture.type}
           onClose={closeCapture}
           variant={isPhone ? "sheet" : "panel"}
         />

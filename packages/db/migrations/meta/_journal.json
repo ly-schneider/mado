@@ -29,6 +29,27 @@
       "when": 1793313721192,
       "tag": "0003_doc_kind",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793647600559,
+      "tag": "0004_session_ip",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793647777739,
+      "tag": "0005_auth_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793648152218,
+      "tag": "0006_instance_admin",
+      "breakpoints": true
     }
   ]
 }

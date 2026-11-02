@@ -13,16 +13,7 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>mado</title>
-    <script>
-      // Apply the theme before first paint so there is no flash.
-      try {
-        var t = localStorage.getItem("mado.theme") || "system";
-        var a = localStorage.getItem("mado.accent");
-        var dark = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-        document.documentElement.dataset.theme = dark ? "dark" : "light";
-        if (a && a.charAt(0) === "#") document.documentElement.style.setProperty("--user-accent", a);
-      } catch (e) {}
-    </script>
+    <script src="/theme.js"></script>
   </head>
   <body>
     <div id="root"></div>

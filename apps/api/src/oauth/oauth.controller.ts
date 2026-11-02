@@ -2,6 +2,8 @@ import { Controller, Get, Options, Post, Req, Res } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { config } from "../config";
 import { MCP_RESOURCE } from "../lib/agent-auth";
+import { clientIp } from "../lib/client-ip";
+import { AppError } from "../lib/errors";
 import { OAuthError, OAuthService } from "../services/oauth.service";
 
 const MAX_BODY = 64 * 1024;
@@ -41,6 +43,10 @@ function cors(res: Response) {
 }
 
 function sendError(res: Response, e: unknown) {
+  if (e instanceof AppError && e.code === "TOO_MANY_REQUESTS") {
+    res.status(429).setHeader("Retry-After", String(e.data?.retryAfter ?? 60)).json({ error: "too_many_requests", error_description: e.message });
+    return;
+  }
   if (e instanceof OAuthError) {
     res.status(e.status).setHeader("Cache-Control", "no-store").json({ error: e.error, error_description: e.description });
     return;
@@ -107,7 +113,7 @@ export class OAuthController {
   async register(@Req() req: Request, @Res() res: Response) {
     cors(res);
     try {
-      const client = await this.oauth.register(await readBody(req));
+      const client = await this.oauth.register(await readBody(req), clientIp(req));
       res.status(201).setHeader("Cache-Control", "no-store").json(client);
     } catch (e) {
       sendError(res, e);
@@ -135,7 +141,7 @@ export class OAuthController {
       // Public clients may still send HTTP Basic with an empty secret; take the client_id from it.
       const basic = req.headers.authorization?.match(/^Basic\s+(.+)$/i)?.[1];
       if (basic && !params.client_id) params.client_id = decodeURIComponent(Buffer.from(basic, "base64").toString("utf8").split(":")[0] ?? "");
-      res.status(200).json(await this.oauth.token(params));
+      res.status(200).json(await this.oauth.token(params, clientIp(req)));
     } catch (e) {
       sendError(res, e);
     }

@@ -8,6 +8,7 @@ import { AccessService } from "./access.service";
 import { AiService } from "./ai.service";
 import { AuditService } from "./audit.service";
 import { DocService } from "./doc.service";
+import { RateLimitService } from "./rate-limit.service";
 import { RefsService } from "./refs.service";
 import { ShareService } from "./share.service";
 
@@ -16,7 +17,7 @@ const dbs = new DbService();
 const access = new AccessService(dbs);
 const audit = new AuditService();
 const docService = new DocService(dbs, access, audit, new RefsService(), new AiService(dbs));
-const share = new ShareService(dbs, access, audit, docService);
+const share = new ShareService(dbs, access, audit, docService, new RateLimitService(dbs));
 
 let user: Actor;
 let other: Actor;
@@ -126,6 +127,16 @@ describe("guest confinement", () => {
 
     await share.revoke(user, link.id);
     await expect(share.open(token, "1234")).rejects.toThrow("no longer valid");
+  });
+
+  test("wrong PINs lock the link after five tries", async () => {
+    const root = await docService.create(user, { workspaceId, projectId, title: "Locked", content: "" });
+    const link = await share.create(user, { docId: root.id, name: "PIN test", type: "view", pin: "4321", expiry: "7d" });
+    const token = link.url.split("/s/")[1]!;
+    for (let left = 4; left >= 0; left--) {
+      await expect(share.open(token, "0000")).rejects.toMatchObject({ data: { wrongPin: true, attemptsLeft: left } });
+    }
+    await expect(share.open(token, "4321")).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS", data: { pinRequired: true } });
   });
 });
 

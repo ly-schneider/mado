@@ -1,7 +1,7 @@
 import type { TaskStatus, TaskSummary } from "@mado/contract";
 import { Button, cn, ContextArea, EmptyState, Segmented, Spinner, StatusIcon } from "@mado/ui";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { Plus } from "@mado/ui/fluent";
+import { Plus, Zap } from "@mado/ui/fluent";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TaskView } from "../../router";
 import { useCommands } from "../../lib/shortcuts";
@@ -12,7 +12,7 @@ import { ACTIVE_FIRST, groupByStatus, setDisplay, STATUS_LABEL, updateTask, useD
 import { FilterBar, FilterMenu, hasFilters, type TaskFilters, useFilterPredicate } from "./FilterBar";
 import { newTaskEntries, TaskRowMenu } from "./actions";
 import { PickerHost, useTaskHotkeys } from "./pickers";
-import { GroupHeader, TaskCard, TaskRow, TaskRowPhone } from "./TaskBits";
+import { AssigneeAvatar, GroupHeader, TaskCard, TaskRow, TaskRowPhone } from "./TaskBits";
 
 const BOARD_CORE: TaskStatus[] = ["todo", "in_progress", "in_review"];
 
@@ -32,6 +32,7 @@ export function TasksPage() {
 
   const filtered = useMemo(() => (tasks.data ?? []).filter((t) => t.type !== "epic" && predicate(t)), [tasks.data, predicate]);
   const groups = useMemo(() => groupByStatus(filtered), [filtered]);
+  const epics = useMemo(() => epicProgress(tasks.data ?? []), [tasks.data]);
 
   const visible: TaskStatus[] = useMemo(() => {
     const order = view === "board" ? (["backlog", ...BOARD_CORE, "done", "canceled"] as TaskStatus[]) : ACTIVE_FIRST;
@@ -45,7 +46,7 @@ export function TasksPage() {
     () => visible.map((s) => ({ status: s, tasks: groups.get(s) ?? [] })).filter((c) => view === "board" || c.tasks.length > 0),
     [visible, groups, view],
   );
-  const flat = useMemo(() => columns.flatMap((c) => c.tasks), [columns]);
+  const flat = useMemo(() => (view === "epics" ? epics.flatMap((g) => g.epics.map((e) => e.epic)) : columns.flatMap((c) => c.tasks)), [view, epics, columns]);
   const focused = flat.find((t) => t.id === focusId);
 
   useEffect(() => {
@@ -58,13 +59,15 @@ export function TasksPage() {
     navigate({ to: "/$ws/t/$taskKey", params: { ws: ws.slug, taskKey: t.key } });
   };
   const setFilters = (f: TaskFilters) => navigate({ search: (s) => ({ ...s, ...f }), replace: true });
-  const setView = (v: TaskView) => navigate({ search: (s) => ({ ...s, view: v === "list" ? "list" : undefined }), replace: true });
-  const create = (status?: TaskStatus) => project && openCapture("task", { projectId: project.id, status });
+  const setView = (v: TaskView) => navigate({ search: (s) => ({ ...s, view: v === "board" ? undefined : v }), replace: true });
+  const create = (status?: TaskStatus) => project && openCapture("task", { projectId: project.id, status, type: view === "epics" ? "epic" : undefined });
+  /** The board, narrowed to one epic's tasks. */
+  const showEpicTasks = (epic: TaskSummary) => navigate({ search: { view: undefined, epic: epic.key }, replace: false });
 
   const move = (dir: 1 | -1) => {
     if (!flat.length) return;
     if (!focused) return setFocusId(flat[dir === 1 ? 0 : flat.length - 1]!.id);
-    if (view === "list") {
+    if (view !== "board") {
       const i = flat.indexOf(focused);
       return setFocusId(flat[Math.max(0, Math.min(flat.length - 1, i + dir))]!.id);
     }
@@ -92,9 +95,20 @@ export function TasksPage() {
       { id: "list.right", title: "Next column", keys: "ArrowRight", group: "Navigation", run: () => moveColumn(1) },
       { id: "list.open", title: "Open", keys: "Enter", hint: "↵", group: "Navigation", run: () => focused && open(focused) },
       { id: "list.clear", title: "Clear focus", keys: "Escape", group: "Navigation", run: () => setFocusId(null), when: noOverlay },
-      { id: "tasks.create", title: "Create task", subtitle: project ? `in ${project.name}` : undefined, keys: "c", hint: "C", group: "Actions", run: () => create() },
+      { id: "tasks.create", title: view === "epics" ? "Create epic" : "Create task", subtitle: project ? `in ${project.name}` : undefined, keys: "c", hint: "C", group: "Actions", run: () => create() },
       { id: "tasks.view.board", title: "Show as board", keys: "v b", hint: "V then B", group: "Tasks", run: () => setView("board") },
       { id: "tasks.view.list", title: "Show as list", keys: "v l", hint: "V then L", group: "Tasks", run: () => setView("list") },
+      { id: "tasks.view.epics", title: "Show epics", keys: "v e", hint: "V then E", group: "Tasks", run: () => setView("epics") },
+      {
+        id: "epics.tasks",
+        title: "Show tasks in this epic",
+        subtitle: focused?.key,
+        keys: "t",
+        hint: "T",
+        group: "Tasks",
+        run: () => focused && showEpicTasks(focused),
+        when: () => view === "epics" && !!focused,
+      },
       { id: "tasks.filter", title: "Add filter", keys: "f", hint: "F", group: "Tasks", run: () => setAddOpen(true) },
       { id: "tasks.filter.clear", title: "Clear filters", group: "Tasks", run: () => setFilters({ status: undefined, labels: undefined, epic: undefined, assignee: undefined }), when: () => hasFilters(filters) },
       { id: "tasks.backlog", title: display.showBacklog ? "Hide backlog" : "Show backlog", group: "Tasks", run: () => setDisplay({ showBacklog: !display.showBacklog }) },
@@ -112,31 +126,40 @@ export function TasksPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <PageHeader
-        crumbs={[{ label: ws.name }, { label: "Tasks" }]}
+        crumbs={[{ label: ws.name }, { label: view === "epics" ? "Epics" : "Tasks" }]}
         center={
           <Segmented
             value={view}
             onChange={setView}
-            options={[
-              { value: "board", label: "Board" },
-              { value: "list", label: "List" },
-            ]}
+            options={VIEW_OPTIONS}
           />
         }
         mobileLabel={project.name}
       >
-        <FilterMenu projectId={project.id} filters={filters} onChange={setFilters} open={addOpen} onOpenChange={setAddOpen} />
+        {view !== "epics" && <FilterMenu projectId={project.id} filters={filters} onChange={setFilters} open={addOpen} onOpenChange={setAddOpen} />}
         <Button variant="primary" icon={<Plus />} kbd="C" onClick={() => create()}>
-          New task
+          {view === "epics" ? "New epic" : "New task"}
         </Button>
       </PageHeader>
-      <MobileTitle title="Tasks" subtitle={`${filtered.filter((t) => t.status !== "done" && t.status !== "canceled").length} open`} />
-      <FilterBar projectId={project.id} filters={filters} onChange={setFilters} />
+      <MobileTitle
+        title={view === "epics" ? "Epics" : "Tasks"}
+        subtitle={
+          view === "epics"
+            ? `${epics.flatMap((g) => g.epics).filter((e) => e.epic.status !== "done" && e.epic.status !== "canceled").length} open`
+            : `${filtered.filter((t) => t.status !== "done" && t.status !== "canceled").length} open`
+        }
+      />
+      <div className="px-4 pb-3 md:hidden">
+        <Segmented value={view === "epics" ? "epics" : "board"} onChange={(v) => setView(v)} options={PHONE_VIEW_OPTIONS} />
+      </div>
+      {view !== "epics" && <FilterBar projectId={project.id} filters={filters} onChange={setFilters} />}
 
       {tasks.isPending && !tasks.data ? (
         <div className="flex flex-1 items-center justify-center">
           <Spinner />
         </div>
+      ) : view === "epics" ? (
+        <EpicsView groups={epics} focusId={focusId} onOpen={open} onShowTasks={showEpicTasks} onCreate={() => create()} onFocus={setFocusId} />
       ) : (
         <>
           <div className="hidden min-h-0 flex-1 md:flex">
@@ -166,6 +189,129 @@ export function TasksPage() {
         </>
       )}
       <PickerHost />
+    </div>
+  );
+}
+
+const VIEW_OPTIONS: { value: TaskView; label: string }[] = [
+  { value: "board", label: "Board" },
+  { value: "list", label: "List" },
+  { value: "epics", label: "Epics" },
+];
+const PHONE_VIEW_OPTIONS: { value: TaskView; label: string }[] = [
+  { value: "board", label: "Tasks" },
+  { value: "epics", label: "Epics" },
+];
+
+interface EpicProgress {
+  epic: TaskSummary;
+  done: number;
+  /** Canceled tasks don't count towards an epic. */
+  total: number;
+  assignees: NonNullable<TaskSummary["assignee"]>[];
+}
+
+/** Epics grouped by status, active first, each with its tasks counted from the project's task list. */
+function epicProgress(all: TaskSummary[]) {
+  const children = new Map<string, TaskSummary[]>();
+  for (const t of all) {
+    if (!t.epic) continue;
+    const list = children.get(t.epic.id) ?? [];
+    list.push(t);
+    children.set(t.epic.id, list);
+  }
+  const groups = groupByStatus(all.filter((t) => t.type === "epic"), ACTIVE_FIRST);
+  return ACTIVE_FIRST.map((status) => ({
+    status,
+    epics: (groups.get(status) ?? []).map((epic): EpicProgress => {
+      const kids = (children.get(epic.id) ?? []).filter((t) => t.status !== "canceled");
+      const assignees = new Map(kids.flatMap((t) => (t.assignee ? [[`${t.assignee.type}:${t.assignee.id}`, t.assignee] as const] : [])));
+      return { epic, done: kids.filter((t) => t.status === "done").length, total: kids.length, assignees: [...assignees.values()].slice(0, 3) };
+    }),
+  })).filter((g) => g.epics.length > 0);
+}
+
+function EpicsView({
+  groups,
+  focusId,
+  onOpen,
+  onShowTasks,
+  onCreate,
+  onFocus,
+}: {
+  groups: { status: TaskStatus; epics: EpicProgress[] }[];
+  focusId: string | null;
+  onOpen: (t: TaskSummary) => void;
+  onShowTasks: (t: TaskSummary) => void;
+  onCreate: () => void;
+  onFocus: (id: string | null) => void;
+}) {
+  if (groups.length === 0) {
+    return (
+      <div className="flex-1">
+        <EmptyState icon={<Zap />} title="No epics yet">
+          <p>An epic groups related tasks and shows how far along they are.</p>
+          <Button icon={<Plus />} onClick={onCreate} className="mt-3">
+            New epic
+          </Button>
+        </EmptyState>
+      </div>
+    );
+  }
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto pb-36 md:pb-8" role="table">
+      {groups.map(({ status, epics }) => (
+        <section key={status}>
+          <GroupHeader status={status} count={epics.length} sticky className="max-md:bg-page max-md:px-4" />
+          {epics.map((e) => (
+            <TaskRowMenu key={e.epic.id} task={e.epic} onOpen={() => onOpen(e.epic)} onFocus={() => onFocus(e.epic.id)}>
+              <EpicRow progress={e} focused={focusId === e.epic.id} onClick={() => onOpen(e.epic)} onShowTasks={() => onShowTasks(e.epic)} />
+            </TaskRowMenu>
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function EpicRow({ progress, focused, onClick, onShowTasks }: { progress: EpicProgress; focused: boolean; onClick: () => void; onShowTasks: () => void }) {
+  const { epic, done, total, assignees } = progress;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <div
+      role="row"
+      data-task-id={epic.id}
+      onClick={onClick}
+      className={cn(
+        "flex min-h-10 cursor-default select-none items-center gap-3 px-5 text-sm hover:bg-state-hover max-md:min-h-14 max-md:px-4",
+        focused && "bg-state-selected hover:bg-state-selected",
+      )}
+    >
+      <StatusIcon status={epic.status} />
+      <span className="w-[60px] shrink-0 truncate text-label font-medium text-ink-subtle max-md:hidden">{epic.key}</span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate font-medium text-ink max-md:text-base">{epic.title}</span>
+        <span className="truncate text-label text-ink-subtle md:hidden">{epic.key}</span>
+      </span>
+      <span className="flex shrink-0 -space-x-1 max-md:hidden">
+        {assignees.map((a) => (
+          <AssigneeAvatar key={`${a.type}:${a.id}`} assignee={a} size="xs" className="ring-2 ring-panel" />
+        ))}
+      </span>
+      <button
+        type="button"
+        title={total ? `${done} of ${total} done · show these tasks` : "No tasks yet"}
+        onClick={(ev) => {
+          ev.stopPropagation();
+          onShowTasks();
+        }}
+        className="flex shrink-0 items-center gap-2 rounded-md px-1.5 py-1 hover:bg-state-hover"
+      >
+        <span className="h-1 w-20 overflow-hidden rounded-full bg-edge max-md:w-12" aria-hidden>
+          <span className="block h-full rounded-full bg-ink-muted" style={{ width: `${pct}%` }} />
+        </span>
+        <span className="w-10 text-right text-label text-ink-subtle">{total ? `${done}/${total}` : "—"}</span>
+      </button>
     </div>
   );
 }

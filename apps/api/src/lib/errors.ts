@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/server";
 
 export class AppError extends Error {
   constructor(
-    readonly code: "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "BAD_REQUEST" | "INSUFFICIENT_SCOPE" | "PRECONDITION_FAILED",
+    readonly code: "UNAUTHORIZED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "BAD_REQUEST" | "INSUFFICIENT_SCOPE" | "PRECONDITION_FAILED" | "TOO_MANY_REQUESTS",
     message: string,
     readonly data?: Record<string, unknown>,
   ) {

@@ -3,6 +3,7 @@ import { Link, Navigate, Outlet, useNavigate, useParams, useRouterState } from "
 import { BookOpen, Briefcase, CircleCheck, Plus, Search } from "@mado/ui/fluent";
 import { useEffect, useState } from "react";
 import { isTauri } from "../../lib/platform";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands } from "../../lib/shortcuts";
 import { setAccent, setTheme, toggleTheme } from "../../lib/theme";
 import { openCapture, openPalette, setUi, useUi } from "../../lib/ui";
@@ -125,15 +126,16 @@ export function AppShell() {
 
   return (
     <div className="flex h-full bg-page">
-      <aside
-        className={cn(
-          "hidden w-60 shrink-0 border-r border-edge bg-panel md:block",
-          !sidebarOpen && "md:hidden",
-          isTauri && "bg-panel/95",
-        )}
+      <ResizablePanel
+        id="sidebar"
+        side="left"
+        defaultWidth={240}
+        min={200}
+        max={400}
+        className={cn("hidden border-r border-edge bg-panel md:block", !sidebarOpen && "md:hidden", isTauri && "bg-panel/95")}
       >
         <Sidebar />
-      </aside>
+      </ResizablePanel>
       <main className="relative flex min-w-0 flex-1 flex-col">
         <Outlet />
         <MobileTabBar slug={ws.slug} projectKey={ws.projects[0]?.key ?? ""} />

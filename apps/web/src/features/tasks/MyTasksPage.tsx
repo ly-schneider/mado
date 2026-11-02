@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { ArrowUpRight, Calendar, FileText, GitBranch, Link2, ListFilter, PanelRight } from "@mado/ui/fluent";
 import { useEffect, useMemo, useState } from "react";
 import { orpc } from "../../lib/orpc";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands } from "../../lib/shortcuts";
 import { dueLabel } from "../../lib/time";
 import { pushRecent } from "../../lib/ui";
@@ -148,7 +149,7 @@ function DetailPane({ task, onClose, onOpen }: { task: TaskSummary; onClose: () 
   const onChange = applyToTask(task);
   const due = dueLabel(task.dueDate);
   return (
-    <aside className="flex w-[400px] shrink-0 flex-col border-l border-edge xl:w-[440px]">
+    <ResizablePanel id="task-detail" side="right" defaultWidth={420} min={340} max={720} className="flex flex-col border-l border-edge">
       <div className="flex h-11 shrink-0 items-center gap-1 px-5">
         <span className="flex-1 text-sm text-ink-subtle">{task.key}</span>
         <IconButton label="Open in full (↵)" size="sm" onClick={onOpen}>
@@ -229,7 +230,7 @@ function DetailPane({ task, onClose, onOpen }: { task: TaskSummary; onClose: () 
           </div>
         )}
       </div>
-    </aside>
+    </ResizablePanel>
   );
 }
 

@@ -16,7 +16,7 @@ pg -d postgres -c "DROP DATABASE IF EXISTS $SCRATCH" > /dev/null
 pg -d postgres -c "CREATE DATABASE $SCRATCH" > /dev/null
 trap 'pg -d postgres -c "DROP DATABASE IF EXISTS $SCRATCH" > /dev/null' EXIT
 
-pg_restore -d "$SCRATCH" --no-owner --exit-on-error "$dump"
+pg_restore -d "$SCRATCH" --no-owner --exclude-schema=pgboss --exit-on-error "$dump"
 
 fail=0
 for table in users workspaces projects tasks docs revisions audit_log; do

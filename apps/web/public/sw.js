@@ -11,7 +11,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(SHELL_CACHE)
-      .then((cache) => cache.add(new Request("/", { cache: "reload" })))
+      .then((cache) => cache.addAll([new Request("/", { cache: "reload" }), new Request("/theme.js", { cache: "reload" })]))
       .catch(() => {})
       .then(() => self.skipWaiting()),
   );
@@ -33,23 +33,25 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin || NEVER.test(url.pathname)) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(networkFirstShell(request));
+    event.respondWith(networkFirst(request, "/"));
+  } else if (url.pathname === "/theme.js") {
+    event.respondWith(networkFirst(request, "/theme.js"));
   } else if (url.pathname.startsWith("/assets/")) {
     event.respondWith(cacheFirst(request));
   }
 });
 
-async function networkFirstShell(request) {
+// Every SPA route serves the same index.html, so one "/" entry covers them all.
+async function networkFirst(request, key) {
   const cache = await caches.open(SHELL_CACHE);
   try {
     const response = await fetch(request);
-    // Every SPA route serves the same index.html, so one entry covers them all.
-    if (response.ok && response.headers.get("content-type")?.includes("text/html")) {
-      cache.put("/", response.clone());
+    if (response.ok && (key !== "/" || response.headers.get("content-type")?.includes("text/html"))) {
+      cache.put(key, response.clone());
     }
     return response;
   } catch (error) {
-    const cached = await cache.match("/");
+    const cached = await cache.match(key);
     if (cached) return cached;
     throw error;
   }

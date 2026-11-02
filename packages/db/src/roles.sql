@@ -18,7 +18,7 @@ GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO mado_app;
 
 -- Link and session tables are rebuilt or expire, so the app may delete rows there.
 GRANT DELETE ON
-  sessions, memberships, task_labels, task_docs, refs, favorites, agent_grant_projects, oauth_codes
+  sessions, memberships, task_labels, task_docs, refs, favorites, agent_grant_projects, oauth_codes, auth_attempts
 TO mado_app;
 
 -- Revisions and the audit log are append-only. The audit log keeps one exception: the

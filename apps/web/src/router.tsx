@@ -21,7 +21,12 @@ const rootRoute = createRootRoute({
 const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : undefined);
 
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: RootRedirect });
-const setupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/setup", component: lazyRouteComponent(() => import("./features/auth/SetupPage"), "SetupPage") });
+const setupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup",
+  validateSearch: (s: Record<string, unknown>): { token?: string } => ({ token: str(s.token) }),
+  component: lazyRouteComponent(() => import("./features/auth/SetupPage"), "SetupPage"),
+});
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
@@ -66,13 +71,13 @@ const myTasksRoute = createRoute({
   }),
   component: MyTasksPage,
 });
-export type TaskView = "board" | "list";
+export type TaskView = "board" | "list" | "epics";
 const tasksRoute = createRoute({
   getParentRoute: () => wsRoute,
   path: "/p/$key/tasks",
   validateSearch: (s: Record<string, unknown>): { view?: TaskView; status?: string; labels?: string; epic?: string; assignee?: string } => ({
     status: str(s.status),
-    view: s.view === "list" ? "list" : undefined,
+    view: s.view === "list" || s.view === "epics" ? s.view : undefined,
     labels: str(s.labels),
     epic: str(s.epic),
     assignee: str(s.assignee),

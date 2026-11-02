@@ -7,6 +7,7 @@ import { ChevronRight, Ellipsis, FilePlus, FileText, Folder, FolderOpen, PanelLe
 import { type ReactNode, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { client, errorMessage } from "../../lib/orpc";
+import { ResizablePanel } from "../../lib/resizable";
 import { toast } from "../../lib/toast";
 import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownView } from "../editor/MarkdownView";
@@ -213,10 +214,12 @@ function GuestShell({ token, pin, session }: { token: string; pin?: string; sess
         <div ref={setActions} className="ml-auto flex shrink-0 items-center gap-2" />
       </header>
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-60 shrink-0 overflow-y-auto border-r border-edge bg-panel px-2 py-3 md:block" aria-label="Shared pages">
-          <div className="px-2 pb-1.5 text-label font-medium text-ink-subtle">Shared pages</div>
-          {tree}
-        </aside>
+        <ResizablePanel id="guest-tree" side="left" defaultWidth={240} min={200} max={400} className="hidden flex-col border-r border-edge bg-panel md:flex" aria-label="Shared pages">
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
+            <div className="px-2 pb-1.5 text-label font-medium text-ink-subtle">Shared pages</div>
+            {tree}
+          </div>
+        </ResizablePanel>
         <GuestDoc key={docId} token={token} pin={pin} session={session} docId={docId} actions={actions} onOpenDoc={openDoc} onCreate={create} onChanged={refreshSession} />
       </div>
       <Dialog open={treeOpen} onOpenChange={setTreeOpen} position="sheet" title="Shared pages" className="top-auto max-h-[75dvh]">

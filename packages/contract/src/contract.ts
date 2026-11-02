@@ -49,13 +49,16 @@ const taskPatch = z.object({
 export const contract = {
   auth: {
     setupStatus: oc.output(type<T.SetupStatus>()),
-    /** Creates the owner account. Only allowed while no user exists. */
+    /** Creates the owner account. Only allowed while no user exists, with the setup token from the server log. */
     setup: oc
-      .input(z.object({ name: z.string().trim().min(1), email: z.email(), password: z.string().min(10) }))
+      .input(z.object({ name: z.string().trim().min(1), email: z.email(), password: z.string().min(10), token: z.string().optional() }))
       .output(type<T.Me>()),
     login: oc.input(z.object({ email: z.email(), password: z.string().min(1) })).output(type<T.Me>()),
     logout: oc.output(ok),
     me: oc.output(type<T.Me | null>()),
+    /** The signed-in user's own sessions, newest first. */
+    sessions: oc.output(type<T.UserSession[]>()),
+    revokeSession: oc.input(z.object({ id: z.string() })).output(ok),
     updateProfile: oc
       .input(
         z.object({
@@ -353,6 +356,12 @@ export const contract = {
 
   settings: {
     instance: oc.output(type<T.InstanceInfo>()),
+    /** Instance admins only. */
+    updateInstance: oc.input(z.object({ membersCanCreateWorkspaces: z.boolean() })).output(type<T.InstanceInfo>()),
+    /** Instance admins only: every account on this instance. */
+    users: oc.output(type<T.InstanceUser[]>()),
+    /** Instance admins only. The last admin can't be removed. */
+    setAdmin: oc.input(z.object({ userId: uuid, admin: z.boolean() })).output(type<T.InstanceUser[]>()),
     ai: oc.output(type<T.AiSettings>()),
     updateAi: oc
       .input(

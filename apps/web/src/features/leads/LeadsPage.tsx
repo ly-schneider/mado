@@ -5,6 +5,7 @@ import { Navigate, useNavigate, useParams, useSearch } from "@tanstack/react-rou
 import { ListFilter, Plus } from "@mado/ui/fluent";
 import { type DragEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands, useListNavigation } from "../../lib/shortcuts";
 import { shortDate } from "../../lib/time";
 import { toast } from "../../lib/toast";
@@ -151,7 +152,9 @@ function Leads({ project }: { project: Project }) {
           )}
         </div>
         {selected && split && (
-          <aside className="flex w-[456px] shrink-0 flex-col border-l border-edge">{detail}</aside>
+          <ResizablePanel id="lead-detail" side="right" defaultWidth={456} min={360} max={720} className="flex flex-col border-l border-edge">
+            {detail}
+          </ResizablePanel>
         )}
       </div>
       <NewLeadDialog

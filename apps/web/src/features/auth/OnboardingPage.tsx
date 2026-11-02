@@ -4,7 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, useNavigate } from "@tanstack/react-router";
 import { Check, X } from "@mado/ui/fluent";
 import { useEffect, useState } from "react";
-import { errorMessage, orpc, queryClient } from "../../lib/orpc";
+import { client, errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useMe } from "../../lib/workspace";
 import { useIsPhone } from "../settings/shared";
 import { AuthScreen, FormError } from "./AuthLayout";
@@ -61,6 +61,7 @@ export function OnboardingPage() {
   const [key, setKey] = useState("");
   const [keyEdited, setKeyEdited] = useState(false);
   const keyState = useKeyCheck(key);
+  const instance = useQuery({ ...orpc.settings.instance.queryOptions(), enabled: !!me.data });
 
   const create = useMutation(
     orpc.workspace.create.mutationOptions({
@@ -72,7 +73,7 @@ export function OnboardingPage() {
     }),
   );
 
-  if (me.isPending) {
+  if (me.isPending || (me.data && instance.isPending)) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner />
@@ -80,6 +81,24 @@ export function OnboardingPage() {
     );
   }
   if (!me.data) return <Navigate to="/login" search={{ next: "/onboarding" }} />;
+
+  if (instance.data && !instance.data.canCreateWorkspaces) {
+    return (
+      <AuthScreen title="No workspace yet" description="Only an instance admin can create workspaces here. Ask one to invite you.">
+        <Button
+          size={phone ? "touch" : "md"}
+          className="w-full"
+          onClick={async () => {
+            await client.auth.logout();
+            queryClient.clear();
+            navigate({ to: "/login", search: { next: undefined } });
+          }}
+        >
+          Log out
+        </Button>
+      </AuthScreen>
+    );
+  }
 
   const canSubmit = workspace.trim() && project.trim() && (keyState === "free" || keyState === "unknown");
   return (

@@ -60,6 +60,10 @@
   "plugins": {
     "deep-link": {
       "desktop": { "schemes": ["mado"] }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM5QzFGN0RCNDNGRkZCNEQKUldSTisvOUQyL2ZCeWVvUkVCQ3N6VG5EN0FmaUt4T0RVbzhzR2hLMXdCOTVyQ2Nva1AyOTlMeE4K",
+      "endpoints": ["https://github.com/ly-schneider/mado/releases/latest/download/latest.json"]
     }
   }
 }

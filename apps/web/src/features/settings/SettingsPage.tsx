@@ -1,14 +1,16 @@
 import { cn } from "@mado/ui";
 import { Link, Navigate, useNavigate, useSearch } from "@tanstack/react-router";
-import { Bot, Brain, Building2, ChevronRight, FolderKanban, History, Link2, Monitor, Palette, Trash2, User, Users } from "@mado/ui/fluent";
+import { Bot, Brain, Building2, ChevronRight, FolderKanban, Globe, History, Link2, Monitor, Palette, Trash2, User, Users } from "@mado/ui/fluent";
 import { type ReactNode, useState } from "react";
 import { isTauri } from "../../lib/platform";
+import { ResizablePanel } from "../../lib/resizable";
 import { useCommands } from "../../lib/shortcuts";
-import { useWorkspace } from "../../lib/workspace";
+import { useMe, useWorkspace } from "../../lib/workspace";
 import { ConnectedAgents } from "../agents/ConnectedAgents";
 import { type Crumb, PageHeader } from "../shell/PageHeader";
 import { AccountSection, AppearanceSection, DesktopSection } from "./AccountSections";
 import { AiSection } from "./AiSection";
+import { InstanceSection } from "./InstanceSection";
 import { ProjectsSection } from "./ProjectsSection";
 import { TitleSlotProvider, useIsPhone } from "./shared";
 import { AuditSection, MembersSection, SharingSection, WorkspaceSection } from "./WorkspaceSections";
@@ -25,6 +27,7 @@ export type SettingsSection =
   | "ai"
   | "sharing"
   | "audit"
+  | "instance"
   | "desktop";
 
 interface SectionMeta {
@@ -32,6 +35,7 @@ interface SectionMeta {
   id: Exclude<SettingsSection, "menu" | "tokens"> | "trash";
   title: string;
   icon: ReactNode;
+  adminOnly?: boolean;
 }
 
 const GROUPS: { label: string; items: SectionMeta[] }[] = [
@@ -61,11 +65,17 @@ const GROUPS: { label: string; items: SectionMeta[] }[] = [
       { id: "ai", title: "AI", icon: <Brain /> },
     ],
   },
+  {
+    label: "Instance",
+    items: [{ id: "instance", title: "Instance", icon: <Globe />, adminOnly: true }],
+  },
 ];
 
-const visible = (s: SectionMeta) => s.id !== "desktop" || isTauri;
+const available = (s: SectionMeta) => s.id !== "desktop" || isTauri;
+/** Admin-only sections stay routable (the API enforces access); they are only hidden from others. */
+const visible = (s: SectionMeta, admin: boolean) => available(s) && (!s.adminOnly || admin);
 type SectionPage = SectionMeta & { id: Exclude<SectionMeta["id"], "trash"> };
-const ALL = GROUPS.flatMap((g) => g.items).filter((s): s is SectionPage => visible(s) && s.id !== "trash");
+const ALL = GROUPS.flatMap((g) => g.items).filter((s): s is SectionPage => available(s) && s.id !== "trash");
 
 function itemLink(ws: string, id: SectionMeta["id"]) {
   return id === "trash"
@@ -79,16 +89,17 @@ export function SettingsPage({ section }: { section: SettingsSection }) {
   const navigate = useNavigate();
   const id = section === "tokens" ? "agents" : section;
   const meta = ALL.find((s) => s.id === id);
+  const admin = useMe().data?.isAdmin ?? false;
 
   useCommands(
-    ALL.filter((s) => s.id !== "agents").map((s) => ({
+    ALL.filter((s) => s.id !== "agents" && visible(s, admin)).map((s) => ({
       id: `settings.${s.id}`,
       title: `Settings: ${s.title}`,
       group: "Settings" as const,
       icon: s.icon,
       run: () => navigate({ to: "/$ws/settings/$section", params: { ws: ws.slug, section: s.id } }),
     })),
-    [ws.slug],
+    [ws.slug, admin],
   );
 
   if (section === "menu") {
@@ -165,6 +176,8 @@ function SectionBody({ id }: { id: SectionPage["id"] }) {
       return <AuditSection />;
     case "ai":
       return <AiSection />;
+    case "instance":
+      return <InstanceSection />;
     case "agents":
       return null;
   }
@@ -173,10 +186,12 @@ function SectionBody({ id }: { id: SectionPage["id"] }) {
 /** Secondary settings navigation, a 200px column inside main. Hidden where the content needs the width. */
 export function SettingsNav({ current, className }: { current: string; className?: string }) {
   const ws = useWorkspace();
+  const admin = useMe().data?.isAdmin ?? false;
   return (
-    <nav aria-label="Settings" className={cn("hidden w-[200px] shrink-0 flex-col gap-px overflow-y-auto border-r border-edge px-2 py-3", className)}>
+    <ResizablePanel as="nav" id="settings-nav" side="left" defaultWidth={200} min={168} max={320} aria-label="Settings" className={cn("hidden flex-col border-r border-edge", className)}>
+      <div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2 py-3">
       {GROUPS.map((g, gi) => {
-        const items = g.items.filter(visible);
+        const items = g.items.filter((s) => visible(s, admin));
         if (items.length === 0) return null;
         return (
           <div key={g.label} className="flex flex-col gap-px">
@@ -197,12 +212,14 @@ export function SettingsNav({ current, className }: { current: string; className
           </div>
         );
       })}
-    </nav>
+      </div>
+    </ResizablePanel>
   );
 }
 
 function PhoneMenu() {
   const ws = useWorkspace();
+  const admin = useMe().data?.isAdmin ?? false;
   return (
     <>
       <PageHeader crumbs={[{ label: ws.name }, { label: "Settings" }]} mobileBack mobileActions={null} />
@@ -210,7 +227,8 @@ function PhoneMenu() {
         <h1 className="px-4 pb-4 pt-2 text-display text-ink">Settings</h1>
         <div className="flex flex-col gap-6 px-4">
           {GROUPS.map((g) => {
-            const items = g.items.filter(visible);
+            const items = g.items.filter((s) => visible(s, admin));
+            if (items.length === 0) return null;
             return (
               <div key={g.label} className="flex flex-col gap-2">
                 <div className="px-1 text-label font-medium text-ink-subtle">{g.label}</div>

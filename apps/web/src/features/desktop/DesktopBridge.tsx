@@ -5,7 +5,8 @@ import { emitTo, listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useRef } from "react";
 import { isTauri } from "../../lib/platform";
-import { isTyping } from "../../lib/shortcuts";
+import { isTyping, useCommands } from "../../lib/shortcuts";
+import { toast } from "../../lib/toast";
 import { openCapture, openPalette, setUi } from "../../lib/ui";
 import { setDesktopServer } from "./server";
 
@@ -64,12 +65,36 @@ function useTauriListener(subscribe: () => Promise<() => void>, deps: unknown[])
   }, deps);
 }
 
+/** The app downloads and installs updates itself (see lib.rs); this only reports them and offers the restart. */
+function useUpdates() {
+  useTauriListener(async () => {
+    let readyToast: number | null = null;
+    const offerRestart = (version: string) => {
+      if (readyToast !== null) return;
+      readyToast = toast(`mado ${version} is ready`, { action: { label: "Restart", run: () => invoke("restart_app") }, duration: 0 });
+    };
+    const ready = await invoke<string | null>("update_ready");
+    if (ready) offerRestart(ready);
+    const stops = await Promise.all([
+      listen<string>("update:ready", ({ payload }) => offerRestart(payload)),
+      listen<string>("update:downloading", ({ payload }) => toast(`Downloading mado ${payload}…`)),
+      listen("update:none", () => toast("mado is up to date")),
+      listen<string>("update:error", ({ payload }) => toast.error(`Couldn't check for updates: ${payload}`)),
+    ]);
+    return () => {
+      for (const stop of stops) stop();
+    };
+  }, []);
+  useCommands([{ id: "app.update", title: "Check for updates", group: "Actions", run: () => invoke("check_updates") }], []);
+}
+
 function MainWindowBridge() {
   const { ws } = useParams({ from: "/$ws" });
   const navigate = useNavigate();
   const nav = useRef(navigate);
   nav.current = navigate;
   useDragRegions();
+  useUpdates();
 
   useTauriListener(async () => {
     const openLinks = async () => {

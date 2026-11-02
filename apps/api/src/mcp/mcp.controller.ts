@@ -6,6 +6,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import type { Request, Response } from "express";
 import { config } from "../config";
 import { bearerToken, wwwAuthenticate } from "../lib/agent-auth";
+import { clientIp } from "../lib/client-ip";
 import { RouterService } from "../rpc/router.service";
 import { AgentService } from "../services/agent.service";
 import { registerTools, SERVER_INSTRUCTIONS } from "./tools";
@@ -67,7 +68,7 @@ export class McpController implements OnModuleDestroy {
     }
 
     const token = bearerToken(req.headers.authorization);
-    const ip = req.ip ?? null;
+    const ip = clientIp(req);
     const actor = token ? await this.agents.authenticate(token, ip) : null;
     if (!actor) {
       res.setHeader(

@@ -72,6 +72,7 @@ export function InvitePage() {
 
   if (me.data) {
     const user = me.data;
+    const otherEmail = !!inv.email && inv.email.toLowerCase() !== user.email.toLowerCase();
     return (
       <AuthScreen title={title} description={description}>
         <div className="flex flex-col gap-4">
@@ -82,8 +83,10 @@ export function InvitePage() {
               <div className="truncate text-label text-ink-subtle">{user.email}</div>
             </div>
           </div>
-          <FormError>{accept.error ? errorMessage(accept.error) : null}</FormError>
-          <Button variant="primary" size={phone ? "touch" : "md"} className="w-full" loading={accept.isPending} autoFocus onClick={() => accept.mutate({ token })}>
+          <FormError>
+            {otherEmail ? `This invite is for ${inv.email}. Log out and sign in with that address.` : accept.error ? errorMessage(accept.error) : null}
+          </FormError>
+          <Button variant="primary" size={phone ? "touch" : "md"} className="w-full" disabled={otherEmail} loading={accept.isPending} autoFocus onClick={() => accept.mutate({ token })}>
             Accept invite
           </Button>
         </div>
@@ -131,8 +134,8 @@ export function InvitePage() {
         <Field label="Name">
           <Input autoComplete="name" autoFocus required touch={phone} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="Email">
-          <Input type="email" autoComplete="email" required touch={phone} value={emailValue} onChange={(e) => setEmail(e.target.value)} />
+        <Field label="Email" hint={inv.email ? "this invite is for this address" : undefined}>
+          <Input type="email" autoComplete="email" required readOnly={!!inv.email} touch={phone} value={emailValue} onChange={(e) => setEmail(e.target.value)} />
         </Field>
         <Field label="Password" hint={`at least ${MIN_PASSWORD} characters`}>
           <Input type="password" autoComplete="new-password" required touch={phone} value={password} onChange={(e) => setPassword(e.target.value)} />

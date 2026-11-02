@@ -57,6 +57,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
+  /** Instance admin: changes instance-wide settings (AI key, who may create workspaces) and other admins. */
+  isAdmin: boolean("is_admin").notNull().default(false),
   theme: text("theme").$type<"system" | "dark" | "light">().notNull().default("system"),
   /** Any hex colour; links, focus and selection use it. */
   accent: text("accent").notNull().default("#58a0f9"),
@@ -71,6 +73,7 @@ export const sessions = pgTable(
       .notNull()
       .references(() => users.id),
     userAgent: text("user_agent"),
+    ip: text("ip"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: createdAt(),
   },
@@ -595,6 +598,17 @@ export const leads = pgTable(
 // ── Settings ────────────────────────────────────────────────────────────
 
 /** Instance-wide key/value settings. Secrets are stored encrypted (AES-GCM) in valueEnc. */
+/**
+ * Failed sign-in, token and PIN attempts per key ("account:<email>", "ip:<addr>", "pin:<link>", ...).
+ * In Postgres so a restart doesn't reset the counters.
+ */
+export const authAttempts = pgTable("auth_attempts", {
+  key: text("key").primaryKey(),
+  failures: integer("failures").notNull(),
+  lastFailureAt: timestamp("last_failure_at", { withTimezone: true }).notNull(),
+  blockedUntil: timestamp("blocked_until", { withTimezone: true }),
+});
+
 export const settings = pgTable("settings", {
   key: text("key").primaryKey(),
   value: jsonb("value"),

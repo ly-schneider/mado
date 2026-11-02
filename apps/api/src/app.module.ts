@@ -16,6 +16,7 @@ import { DocService } from "./services/doc.service";
 import { InboxService } from "./services/inbox.service";
 import { OAuthService } from "./services/oauth.service";
 import { ProjectService } from "./services/project.service";
+import { RateLimitService } from "./services/rate-limit.service";
 import { RefsService } from "./services/refs.service";
 import { SearchService } from "./services/search.service";
 import { SettingsService } from "./services/settings.service";
@@ -42,6 +43,7 @@ import { SpaController } from "./spa.controller";
     InboxService,
     OAuthService,
     ProjectService,
+    RateLimitService,
     RefsService,
     SearchService,
     SettingsService,

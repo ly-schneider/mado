@@ -1,6 +1,6 @@
 import { Button, Field, Input, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Navigate, useNavigate } from "@tanstack/react-router";
+import { Navigate, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { errorMessage, orpc, queryClient } from "../../lib/orpc";
 import { useIsPhone } from "../settings/shared";
@@ -12,6 +12,8 @@ export function SetupPage() {
   const navigate = useNavigate();
   const phone = useIsPhone();
   const status = useQuery(orpc.auth.setupStatus.queryOptions());
+  const linkToken = useSearch({ from: "/setup" }).token;
+  const [token, setToken] = useState(linkToken ?? "");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -45,11 +47,16 @@ export function SetupPage() {
           e.preventDefault();
           setTouched(true);
           if (short) return;
-          setup.mutate({ name: name.trim(), email: email.trim(), password });
+          setup.mutate({ name: name.trim(), email: email.trim(), password, token: token.trim() });
         }}
       >
+        {!linkToken && (
+          <Field label="Setup token" hint="printed in the server log on first start">
+            <Input autoComplete="off" autoFocus required touch={phone} value={token} onChange={(e) => setToken(e.target.value)} />
+          </Field>
+        )}
         <Field label="Name">
-          <Input autoComplete="name" autoFocus required touch={phone} value={name} onChange={(e) => setName(e.target.value)} />
+          <Input autoComplete="name" autoFocus={!!linkToken} required touch={phone} value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
         <Field label="Email">
           <Input type="email" autoComplete="email" required touch={phone} value={email} onChange={(e) => setEmail(e.target.value)} />
