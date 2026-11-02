@@ -1,7 +1,7 @@
 import { Avatar, Badge, Button, Spinner } from "@mado/ui";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, useSearch } from "@tanstack/react-router";
-import { Bot, Globe, ShieldCheck } from "@mado/ui/fluent";
+import { Bot, Globe, Monitor, ShieldCheck, TriangleAlert } from "@mado/ui/fluent";
 import { type ReactNode, useEffect, useState } from "react";
 import { errorMessage, orpc } from "../../lib/orpc";
 import { modKey } from "../../lib/platform";
@@ -80,6 +80,7 @@ function Consent({ requestId }: { requestId: string }) {
   }
 
   const c = consent.data;
+  const target = redirectTarget(c.client.redirectUri);
   // Projects from the consent request carry their workspace; fall back to the workspace list if the server omits them.
   const projects =
     c.projects.length > 0
@@ -119,10 +120,22 @@ function Consent({ requestId }: { requestId: string }) {
             <span className="truncate text-sm text-ink">{c.client.name}</span>
             {!c.client.verified && <Badge className="text-ink-muted">unverified</Badge>}
           </ClientRow>
-          <ClientRow icon={<Globe />} label="Redirect">
-            <span className="truncate text-label font-medium text-ink-muted">{c.client.redirectUri}</span>
+          <ClientRow icon={target.loopback ? <Monitor /> : <Globe />} label="Sends to">
+            <span className="truncate text-sm text-ink" title={c.client.redirectUri}>
+              {target.host}
+            </span>
+            <Badge className="text-ink-muted">{target.loopback ? "this computer" : "remote"}</Badge>
           </ClientRow>
         </div>
+        {!target.loopback && (
+          <p className="flex gap-2 text-label text-ink-muted [&>svg]:mt-0.5 [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-ink">
+            <TriangleAlert />
+            <span>
+              Approving sends a sign-in code to <span className="font-medium text-ink">{target.host}</span>. The client picked its own name, so only approve if you
+              started this and recognise that address.
+            </span>
+          </p>
+        )}
 
         <AgentNameField value={draft.agentName} onChange={(agentName) => setDraft({ ...draft, agentName })} />
         <ProjectLevelTable projects={projects} draft={draft} onChange={setDraft} />
@@ -159,6 +172,16 @@ function Consent({ requestId }: { requestId: string }) {
       </p>
     </AuthFrame>
   );
+}
+
+/** Where the authorization code goes. Loopback means an app on this machine, which is the usual case for CLI agents. */
+function redirectTarget(uri: string) {
+  try {
+    const u = new URL(uri);
+    return { host: u.host, loopback: ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname) };
+  } catch {
+    return { host: uri, loopback: false };
+  }
 }
 
 function ClientRow({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {

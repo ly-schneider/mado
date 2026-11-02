@@ -1,13 +1,14 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createHash, randomBytes } from "node:crypto";
-import { users } from "@mado/db";
+import { authAttempts, oauthClients, users } from "@mado/db";
+import { eq } from "drizzle-orm";
 import { DbService } from "../db";
 import type { Actor } from "../lib/actor";
 import { isAllowedRedirectUri, redirectUriMatches, verifyPkce } from "../lib/agent-auth";
 import { AccessService } from "./access.service";
 import { AgentService } from "./agent.service";
 import { OAuthError, OAuthService } from "./oauth.service";
-import { RateLimitService } from "./rate-limit.service";
+import { POLICIES, RateLimitService } from "./rate-limit.service";
 
 const challengeFor = (verifier: string) => createHash("sha256").update(verifier).digest("base64url");
 
@@ -141,5 +142,28 @@ describe("token endpoint (database)", () => {
     const code = await authorizeAndApprove(verifier);
     const t = await oauth.token({ grant_type: "authorization_code", code, code_verifier: verifier, client_id: clientId, redirect_uri: redirect });
     await expectOAuthError(oauth.token({ grant_type: "refresh_token", refresh_token: t.refresh_token, client_id: "mcp_other" }), "invalid_grant");
+  });
+
+  test("registration is limited per IP", async () => {
+    const ip = `198.18.${randomBytes(1)[0]}.${randomBytes(1)[0]}`;
+    const body = { client_name: "flood", redirect_uris: [redirect] };
+    try {
+      for (let i = 0; i < POLICIES.register.limit; i++) await oauth.register(body, ip);
+      await expect(oauth.register(body, ip)).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    } finally {
+      await dbs.db.delete(authAttempts).where(eq(authAttempts.key, `register:${ip}`));
+    }
+  });
+
+  // Last: needs the grants the tests above created for clientId.
+  test("clients that never got a grant are pruned, used ones stay", async () => {
+    const unused = (await oauth.register({ client_name: "unused", redirect_uris: [redirect] })).client_id;
+    expect(await oauth.pruneUnusedClients(new Date(Date.now() - 60_000))).toBeGreaterThanOrEqual(0);
+    const stillThere = await dbs.db.select().from(oauthClients).where(eq(oauthClients.clientId, unused));
+    expect(stillThere).toHaveLength(1);
+
+    await oauth.pruneUnusedClients(new Date(Date.now() + 1000));
+    expect(await dbs.db.select().from(oauthClients).where(eq(oauthClients.clientId, unused))).toHaveLength(0);
+    expect(await dbs.db.select().from(oauthClients).where(eq(oauthClients.clientId, clientId))).toHaveLength(1);
   });
 });

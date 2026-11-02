@@ -1,7 +1,7 @@
 import type { ConsentRequest, GrantInput } from "@mado/contract";
 import { agentGrants, agentTokens, oauthClients, oauthCodes, type Tx, users } from "@mado/db";
 import { Injectable } from "@nestjs/common";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, lt, notExists } from "drizzle-orm";
 import { DbService } from "../db";
 import type { Actor } from "../lib/actor";
 import { isAllowedRedirectUri, isOurResource, MCP_RESOURCE, redirectUriMatches, verifyPkce } from "../lib/agent-auth";
@@ -210,6 +210,24 @@ export class OAuthService {
     return {
       redirectTo: withParams(req.redirectUri, { error: "access_denied", error_description: "The user denied access", state: req.state ?? undefined }),
     };
+  }
+
+  /**
+   * Registration is open to anyone, so clients that never got a grant are dropped after a day.
+   * Runs as the purge role: the app role can't delete clients.
+   */
+  async pruneUnusedClients(olderThan = new Date(Date.now() - 86_400_000)) {
+    const rows = await this.dbs.purgeDb
+      .delete(oauthClients)
+      .where(
+        and(
+          eq(oauthClients.verified, false),
+          lt(oauthClients.createdAt, olderThan),
+          notExists(this.dbs.purgeDb.select().from(agentGrants).where(eq(agentGrants.clientId, oauthClients.clientId))),
+        ),
+      )
+      .returning({ clientId: oauthClients.clientId });
+    return rows.length;
   }
 
   // ── Token ───────────────────────────────────────────────────────────
