@@ -11,7 +11,7 @@ export function RootRedirect() {
   const workspaces = useWorkspaces();
   // The PWA manifest shortcut opens /?capture=task.
   const wantsCapture = (useSearch({ strict: false }) as { capture?: string }).capture === "task";
-  if (setup.data?.needsSetup) return <Navigate to="/setup" />;
+  if (setup.data?.needsSetup) return <Navigate to="/setup" search={{ token: undefined }} />;
   if (me.isPending || setup.isPending) return <Center />;
   if (!me.data) return <Navigate to="/login" search={{ next: undefined }} />;
   if (workspaces.isPending) return <Center />;

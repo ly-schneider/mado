@@ -35,6 +35,7 @@ services:
       DATABASE_URL: postgres://mado_app:${MADO_APP_PASSWORD:?set MADO_APP_PASSWORD}@postgres:5432/mado
       DATABASE_PURGE_URL: postgres://mado_purge:${MADO_PURGE_PASSWORD:?set MADO_PURGE_PASSWORD}@postgres:5432/mado
       JOBS: ${JOBS:-on}
+      MADO_SETUP_TOKEN: ${MADO_SETUP_TOKEN:-}
     ports:
       - "${MADO_BIND:-127.0.0.1:4100}:4100"
 

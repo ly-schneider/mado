@@ -21,7 +21,12 @@ const rootRoute = createRootRoute({
 const str = (v: unknown) => (typeof v === "string" && v.length > 0 ? v : undefined);
 
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/", component: RootRedirect });
-const setupRoute = createRoute({ getParentRoute: () => rootRoute, path: "/setup", component: lazyRouteComponent(() => import("./features/auth/SetupPage"), "SetupPage") });
+const setupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/setup",
+  validateSearch: (s: Record<string, unknown>): { token?: string } => ({ token: str(s.token) }),
+  component: lazyRouteComponent(() => import("./features/auth/SetupPage"), "SetupPage"),
+});
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",

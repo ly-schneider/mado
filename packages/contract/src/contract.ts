@@ -49,9 +49,9 @@ const taskPatch = z.object({
 export const contract = {
   auth: {
     setupStatus: oc.output(type<T.SetupStatus>()),
-    /** Creates the owner account. Only allowed while no user exists. */
+    /** Creates the owner account. Only allowed while no user exists, with the setup token from the server log. */
     setup: oc
-      .input(z.object({ name: z.string().trim().min(1), email: z.email(), password: z.string().min(10) }))
+      .input(z.object({ name: z.string().trim().min(1), email: z.email(), password: z.string().min(10), token: z.string().optional() }))
       .output(type<T.Me>()),
     login: oc.input(z.object({ email: z.email(), password: z.string().min(1) })).output(type<T.Me>()),
     logout: oc.output(ok),

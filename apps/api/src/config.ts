@@ -22,4 +22,6 @@ export const config = {
   /** Set at image build time by the release workflow. */
   version: process.env.APP_VERSION || "dev",
   sessionDays: 60,
+  /** Fixed first-run setup token for automated installs. Without it a random one is printed to the log. */
+  setupToken: process.env.MADO_SETUP_TOKEN || null,
 };

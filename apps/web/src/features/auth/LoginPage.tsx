@@ -30,7 +30,7 @@ export function LoginPage() {
     }),
   );
 
-  if (setup.data?.needsSetup) return <Navigate to="/setup" />;
+  if (setup.data?.needsSetup) return <Navigate to="/setup" search={{ token: undefined }} />;
   if (me.data && !login.isPending && !login.isSuccess) {
     return target ? <RedirectTo href={target} /> : <Navigate to="/" replace />;
   }

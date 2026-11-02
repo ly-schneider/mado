@@ -1,12 +1,14 @@
 import type { Me } from "@mado/contract";
 import { sessions, users } from "@mado/db";
-import { Injectable } from "@nestjs/common";
-import { and, count, eq, gt } from "drizzle-orm";
+import { type Db, type Tx } from "@mado/db";
+import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
+import { timingSafeEqual } from "node:crypto";
+import { and, count, eq, gt, sql } from "drizzle-orm";
 import { config } from "../config";
 import { DbService } from "../db";
 import { type Actor, initials } from "../lib/actor";
 import { hashPassword, randomToken, sha256, verifyPassword } from "../lib/crypto";
-import { AppError, badRequest, conflict } from "../lib/errors";
+import { AppError, badRequest, conflict, forbidden } from "../lib/errors";
 
 export const SESSION_COOKIE = "mado_session";
 /**
@@ -26,20 +28,46 @@ export function toMe(u: UserRow): Me {
   return { id: u.id, email: u.email, name: u.name, initials: initials(u.name), theme: u.theme, accent: u.accent };
 }
 
+function sameSecret(a: string, b: string) {
+  // Compare digests so the length of the expected token doesn't leak through timing either.
+  return timingSafeEqual(Buffer.from(sha256(a), "hex"), Buffer.from(sha256(b), "hex"));
+}
+
 @Injectable()
-export class AuthService {
+export class AuthService implements OnApplicationBootstrap {
+  private readonly log = new Logger("Auth");
+  /**
+   * Required by auth.setup while no user exists, so a stranger who finds a fresh instance first
+   * can't claim it. Kept in memory: a restart before setup prints a new one.
+   */
+  private setupToken: string | null = config.setupToken;
+
   constructor(private readonly dbs: DbService) {}
+
+  async onApplicationBootstrap() {
+    if (!(await this.needsSetup())) return;
+    if (config.setupToken) {
+      this.log.log(`Setup: ${config.publicUrl}/setup (token from MADO_SETUP_TOKEN)`);
+    } else {
+      this.log.log(`Setup: ${config.publicUrl}/setup?token=${this.currentSetupToken()}`);
+    }
+  }
+
+  currentSetupToken() {
+    this.setupToken ??= randomToken(24);
+    return this.setupToken;
+  }
 
   async needsSetup() {
     const [row] = await this.dbs.db.select({ n: count() }).from(users);
     return (row?.n ?? 0) === 0;
   }
 
-  async createUser(input: { name: string; email: string; password: string }) {
+  async createUser(input: { name: string; email: string; password: string }, db: Db | Tx = this.dbs.db) {
     const email = input.email.trim().toLowerCase();
-    const [existing] = await this.dbs.db.select({ id: users.id }).from(users).where(eq(users.email, email));
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
     if (existing) throw conflict("An account with this email already exists");
-    const [user] = await this.dbs.db
+    const [user] = await db
       .insert(users)
       .values({ name: input.name.trim(), email, passwordHash: await hashPassword(input.password) })
       .returning();
@@ -47,9 +75,17 @@ export class AuthService {
   }
 
   /** First-run: the very first account becomes the instance owner. */
-  async setup(input: { name: string; email: string; password: string }) {
-    if (!(await this.needsSetup())) throw conflict("Setup is already done");
-    return this.createUser(input);
+  async setup(input: { name: string; email: string; password: string; token?: string }) {
+    if (!input.token || !this.setupToken || !sameSecret(input.token, this.setupToken)) throw forbidden("Invalid setup token");
+    const user = await this.dbs.db.transaction(async (tx) => {
+      // Serializes concurrent setups so the empty-table check and the insert can't interleave.
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('mado.setup'))`);
+      const [row] = await tx.select({ n: count() }).from(users);
+      if ((row?.n ?? 0) > 0) throw conflict("Setup is already done");
+      return this.createUser(input, tx);
+    });
+    this.setupToken = null;
+    return user;
   }
 
   async login(email: string, password: string) {

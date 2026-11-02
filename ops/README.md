@@ -10,7 +10,16 @@ cp ../.env.example .env      # set PUBLIC_URL, MADO_SECRET_KEY and the three pas
 docker compose up -d
 ```
 
-Generate secrets with `openssl rand -hex 32`. Then open `PUBLIC_URL`; the first visit asks you to create the owner account. The app container runs database migrations on every start.
+Generate secrets with `openssl rand -hex 32`. The app container runs database migrations on every start.
+
+Until the owner account exists, setup needs a one-time token, so nobody who finds the URL before you can claim the instance. The app prints a setup link with the token on start:
+
+```sh
+docker compose logs api | grep Setup
+# Setup: https://mado.example.com/setup?token=…
+```
+
+Open it and create the owner account; the token stops working once setup is done. A restart before that prints a new one. For automated installs, set `MADO_SETUP_TOKEN` in `.env` instead and pass it to `/setup?token=…`.
 
 You only need `docker-compose.yml` and `.env`, so copying those two files to a server works just as well as cloning. The app creates its database roles and sets their passwords from `.env` on every start.
 
